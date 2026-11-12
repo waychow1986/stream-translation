@@ -3,15 +3,15 @@
   "passed": false,
   "findings": [
     {
-      "id": "TS-SELF-001",
+      "id": "TS-PRED-001",
       "severity": "high",
-      "scope": "self",
-      "artifact": "design.md",
-      "owner": "technical-solution",
-      "summary": "完整合格源语言集合的目标单会话自动检测可行性未闭合",
-      "recommendation": "由 Technical Solution 责任人取得并记录目标 Speech resource/region、SDK 精确版本与 Foundry deployment/API version 的权威能力及真实 contract 证据，完整计算 S、F、E 并证明 1 <= |E| <= 10，再将方案更新为实施就绪；若证据证明已批准 Specification 与技术基线客观不兼容，再依据严格上游例外契约处理，不得将决策留给 Coding。",
-      "route": "current_stage",
-      "reasonType": "incomplete"
+      "scope": "predecessor",
+      "artifact": "spec.md",
+      "owner": "specification",
+      "summary": "“业务所采用翻译能力”未被批准为可确定的目标，导致完整合格语言集合无法实施",
+      "recommendation": "由 Specification 责任人协调业务与已批准技术基线的人工决策，明确“业务所采用翻译能力”的可核验目标及其语言范围来源；若目标 contract 得到 |E| > 10 或无法权威枚举 F，必须由有权审批者明确修改产品覆盖义务或 technical baseline。上游批准后，Technical Solution 再据此复核 E、更新可行性结论和 implementationReady。",
+      "route": "upstream_exception",
+      "reasonType": "ambiguity"
     }
   ]
 }
