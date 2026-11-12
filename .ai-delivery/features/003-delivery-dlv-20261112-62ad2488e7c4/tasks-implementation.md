@@ -11,10 +11,10 @@
 
 - 两个用户故事均未获指定优先级；实施顺序按技术前置关系安排为 Setup → Foundational → US2 → US1 → Polish。
 - T001 → T002；T001 与 T002 完成后，T003、T004 可并行。
-- Foundational 阶段先执行 T005 至 T008；T009 依赖 T005、T006，T010 依赖 T005、T007，T011 依赖 T005、T008，T012 依赖 T009 至 T011。
+- Foundational 阶段先执行 T005 至 T008；T009 依赖 T005、T006，T010 依赖 T005、T007、T008，T011 依赖 T005、T006、T008，T012 依赖 T009 至 T011。
 - US2 的测试 T013 至 T015 依赖 T012；生产实现 T016 依赖 T013、T014，T017 依赖 T013、T015、T016。
-- US1 的测试 T018 至 T022 依赖 T012、T017；生产实现 T023 依赖 T018、T019，T024 依赖 T018、T020、T023，T025 依赖 T019、T020、T023、T024，T026 依赖 T021、T022、T025。
-- Polish 阶段 T027 依赖 T003、T026；T028 依赖 T004、T026；T029 依赖 T002、T013 至 T15、T018 至 T022、T027、T028。
+- US1 的测试 T018 至 T022 依赖 T012、T017；生产实现 T023 依赖 T018、T019、T021，T024 依赖 T018、T020、T023，T025 依赖 T019、T020、T023、T024，T026 依赖 T021、T022、T025。
+- Polish 阶段 T027 依赖 T003、T026；T028 依赖 T004、T026；T029 依赖 T002、T013 至 T015、T018 至 T022、T027、T028。
 
 ## Phase 1：Setup
 
@@ -28,7 +28,7 @@
 - [ ] T005 [P] 先编写 WebSocket v1 schema、严格 sequence、固定 PCM 参数、未知字段拒绝及字幕事件结构的定向单元测试，并以 Vitest 全部断言通过或在实现前明确失败作为 test-first 证据（`tests/unit/schemas.test.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T002）
 - [ ] T006 [P] 先编写 connected/streaming/draining/ended 转换、非法转换、`audio.end` drain 与关闭清理的定向单元测试，并以 Vitest 状态断言作为证据（`tests/unit/state-machine.test.ts`；来源：数据流、状态、并发与生命周期；依赖：T002）
 - [ ] T007 [P] 先编写启动配置 allowlist、必填值、candidate locale 去重校验及客户端不暴露 Azure 配置的定向单元测试，并以无 Azure 凭据的 Vitest 结果作为证据（`tests/unit/config.test.ts`；来源：配置、可观测性与运维、TD-004；依赖：T002）
-- [ ] T008 [P] 先编写 adapter interface、会话模型、ordinal/revision 不变量和内容不进入结构化日志的类型与单元测试，并以 TypeScript/Vitest 结果作为证据（`tests/unit/session-model.test.ts`；来源：领域与数据模型、版本兼容性与 adapter 义务、Constitution 安全条款；依赖：T002）
+- [ ] T008 [P] 先编写 adapter interface、会话模型、ordinal/revision 不变量、health shutdown 状态和内容不进入结构化日志的定向测试，并以 TypeScript/Vitest 结果作为证据（`tests/unit/session-model.test.ts`、`tests/unit/health.test.ts`、`tests/unit/logging.test.ts`；来源：领域与数据模型、版本兼容性与 adapter 义务、配置与可观测性、Constitution 安全条款；依赖：T002）
 - [ ] T009 实现版本化 wire 类型与封闭 schema，精确校验控制事件、UUID、sequence、PCM metadata、640-byte 帧配对及稳定无内容错误码，使 T005 通过（`src/shared/protocol.ts`、`src/shared/schemas.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T005、T006）
 - [ ] T010 实现环境配置一次性校验及 adapter TypeScript interface，隔离 browser/server 配置并禁止生产 adapter 被客户端参数切换，使 T007、T008 通过（`src/server/config.ts`、`src/server/adapters/types.ts`；来源：配置、可观测性与运维、版本兼容性与 adapter 义务；依赖：T005、T007、T008）
 - [ ] T011 实现每连接状态机及会话内存模型，保证状态、客户端/服务端 sequence、ordinal、revision 和关闭清理不变量，使 T006、T008 通过（`src/server/session/state-machine.ts`；来源：领域与数据模型、数据流与生命周期；依赖：T005、T006、T008）
@@ -45,7 +45,7 @@
 ### 实现
 
 - [ ] T016 [US2] 实现 Azure Speech PushAudioInputStream adapter，使用 16 kHz/16-bit/mono PCM、continuous recognition 与 continuous LID，仅输出候选集合内非空 final segment，并在取消后重建 recognizer 而不重放音频，使 T013 通过（`src/server/adapters/azure-speech.ts`；来源：FR-002、FR-005、TD-003、TD-004、Azure Speech adapter Contract；依赖：T013、T014）
-- [ ] T017 [US2] 实现同源 WebSocket client 的 v1 协商与 `session.start`，协议及 UI 不提供源语言字段，严格应用递增 server sequence 与 revision，并使 T015 的自动检测场景通过（`src/client/api/translation-socket.ts`；来源：US-002、FR-002、AC-001、浏览器 WebSocket Contract；依赖：T013、T015、T016）
+- [ ] T017 [US2] 实现同源 WebSocket client 的 v1 协商与 `session.start`，协议不提供源语言字段，严格应用递增 server sequence 与 revision，并满足 T015 的无源语言协议断言（`src/client/api/translation-socket.ts`；来源：US-002、FR-002、AC-001、浏览器 WebSocket Contract；依赖：T013、T015、T016）
 
 ## Phase 4：US1 - 在外语发言期间阅读中文字幕
 
