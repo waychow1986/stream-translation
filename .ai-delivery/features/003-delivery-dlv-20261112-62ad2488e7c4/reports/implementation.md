@@ -214,3 +214,75 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T011、T017，使 Foundational 阶段闭合；生命周期 contract、production build SIGTERM functional、静态分析、build、unit、local contract/integration、local functional、语法、依赖安全和 diff 格式检查均取得最终真实通过结果。整个 Delivery 尚未完成，按 bounded Coding 约束停止。
+
+## Coding Session coding-attempt-01-batch-04-operation-017
+
+### 实施范围
+
+本 Session 按依赖顺序完成 US2 阶段 T018 至 T025，共 8 项任务。先建立 Azure Speech 行为、managed identity token 生命周期、Independent QA 外部音频 fixture bundle、远程 Speech contract、无源语言浏览器场景和 IQA-002 远程入口，再实现 Azure Speech PushAudioInputStream adapter 与同源 WebSocket v1 client。实现提交为 `9f639c36600234c6ae0ad25ce2c9f9381aaaa40a`，任务进度与本账本由后续提交承载。所有本地执行均未读取 Azure 配置、凭据或访问远程服务。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/unit/azure-speech.test.ts` | 覆盖 fixed PCM、continuous LID 候选集合、`NoMatch`、cancellation 重建及不重放 | T018 |
+| `tests/unit/azure-speech-token.test.ts` | 覆盖 Speech scope、到期前刷新、token 不泄露和取消边界 | T019 |
+| `tests/functional/fixtures/manifest.schema.json`、`tests/functional/fixtures/manifest.example.json` | 声明不含真实音频的外部 fixture bundle contract 与示例 | T020 |
+| `tests/functional/support/audio-fixture-bundle.ts`、`tests/functional/support/audio-fixture-bundle.test.ts` | 实现路径、格式、完整帧、SHA-256、locale、场景引用和完整候选集合联网前校验 | T020、T021、T023 |
+| `tests/contract/azure-speech.remote.test.ts` | 创建默认 skip、显式启用的真实 Speech contract/integration 入口 | T021 |
+| `tests/functional/automatic-language-detection.spec.ts` | 通过 Candidate Fastify app test DI、synthetic adapters 和虚拟 PCM 验证无源语言字段及中文字幕 | T022 |
+| `tests/functional/remote/iqa-002.spec.ts`、`tests/functional/support/remote-candidate.ts`、`tests/functional/support/iqa-evidence.ts` | 创建默认 skip 的 IQA-002 已部署 Candidate 入口、identity 读取和证据结构 | T023 |
+| `src/server/adapters/azure-speech.ts` | 实现 managed identity token、固定 PCM、continuous LID、final allowlist、刷新和 cancellation 重建 | T024 |
+| `src/client/api/translation-socket.ts` | 实现同源 WebSocket v1、无源语言 `session.start`、音频帧和 server sequence/revision 校验 | T025 |
+| `package.json` | 将 Playwright functional discovery 限定为 `.spec.ts`，避免把同目录 Vitest fixture contract 测试误作 Playwright 场景 | T020、T022 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/tasks-implementation.md` | 仅将 T018 至 T025 checkbox 更新为完成 | T018-T025 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| US-002 / FR-002 / AC-001 | `src/server/adapters/azure-speech.ts`、`src/client/api/translation-socket.ts` | `tests/unit/azure-speech.test.ts`、`tests/functional/automatic-language-detection.spec.ts` | 无源语言输入、候选 locale 自动识别边界与对应中文字幕辅助场景通过 |
+| FR-005 / Azure Speech adapter Contract | `src/server/adapters/azure-speech.ts` | `tests/unit/azure-speech.test.ts`、`tests/unit/azure-speech-token.test.ts` | `NoMatch` 不生成 segment、cancellation 后重建、不重放音频及 token 刷新断言通过 |
+| IQA-001 至 IQA-003 fixture 前置 contract | `tests/functional/support/audio-fixture-bundle.ts` | `tests/functional/support/audio-fixture-bundle.test.ts` | manifest、文件、hash、格式、locale、路径与场景引用正反例通过 |
+| IQA-002 远程就绪 | `tests/functional/remote/iqa-002.spec.ts` | 同路径及 `tests/contract/azure-speech.remote.test.ts` | 入口可发现且本地默认明确 skip；真实 Azure 与已部署 Candidate 结果未执行并留给下游 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `npm ci` | Node.js 22 Coding workspace，无 Azure 配置 | 通过，退出码 0 | 安装锁定的 269 个 package，audit 为 0 个漏洞 |
+| `npm test -- tests/unit/azure-speech.test.ts tests/unit/azure-speech-token.test.ts tests/functional/support/audio-fixture-bundle.test.ts`（实现前） | 本地 Vitest，无网络 | 预期失败，退出码 1 | 两个 Speech suite 因 `src/server/adapters/azure-speech.ts` 尚不存在失败；fixture contract 正例和反例已通过 |
+| `npm run test:functional -- tests/functional/automatic-language-detection.spec.ts`（实现前） | 本地 Playwright，无网络 | 预期失败，退出码 1 | `src/client/api/translation-socket.ts` 尚不存在，形成 T022/T025 test-first 证据 |
+| `npm run staticAnalysis` | 本地 Node.js 22，无 Azure 配置 | 通过，退出码 0 | `tsc --noEmit` 与 `eslint .` 均通过 |
+| `npm run build` | 同上 | 通过，退出码 0 | Vite client 转换 12 个 module；server 转换 6 个 module并生成 `dist/client`、`dist/server/index.js` |
+| `npm test` | 本地 Vitest，无网络 | 通过，退出码 0 | 12 个文件、35 项断言通过；4 个 Playwright/远程入口明确 skip |
+| `npm run test:contract` | 本地 contract suite，无 Azure 配置 | 通过，退出码 0 | 3 个文件、7 项断言通过；真实 Speech remote contract 1 项明确 skip |
+| `npm run test:functional` | 本地 Playwright、Fastify Candidate test DI、synthetic adapters | 通过，退出码 0 | automatic language detection 与既有 image lifecycle 共 2 项通过；IQA-002 remote 1 项明确 skip |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| immutable base 最终 diff secret pattern scan | `25caac4f8e60fbf2172517c49eec06b374b2f6cf` 对比 | 通过，退出码 0 | 未发现 API key、client secret、password assignment 或 private key 内容 |
+| `git diff --name-status 25caac4f8e60fbf2172517c49eec06b374b2f6cf` | Hub path manifest 检查 | 通过，退出码 0 | 最终新增和修改路径全部位于本 Session 批准 manifest |
+| `git diff --check 25caac4f8e60fbf2172517c49eec06b374b2f6cf` | immutable Session base 对比 | 通过，退出码 0 | 未发现 whitespace error |
+
+### Runtime 与下游门禁就绪制品
+
+- Azure Speech adapter 已具备真实 SDK、managed identity token、continuous language identification、固定 PCM 和 cancellation 恢复入口；真实 endpoint、RBAC、完整 locale 集合与音频结果仍由 Independent QA 提供。
+- IQA-002 remote 场景只在显式 `AIDELIVERY_REMOTE_IQA=1`、remote base URL、候选 locale 和通过完整校验的外部 fixture bundle 同时存在时联网；默认本地执行不读取 Azure endpoint 或 credential。
+- 当前尚未到 T039-T042，未创建 `Dockerfile`、active Feature `runtime/deployment.json` 或最终 developer functional script；未修改 `.github/workflows/`。
+
+### 延后平台证据
+
+- Azure Speech managed identity/RBAC、目标 endpoint、完整候选语言交集逐语言结果及真实音频 contract 由已部署精确 Candidate 上的 Independent QA 产生。
+- IQA-002 的真实 Candidate identity、target、fixture hash、server sequence/ordinal、locale 和中文字幕证据尚未产生；本 Session 仅验证入口、输入校验、默认 skip 与本地 synthetic 辅助行为。
+- Candidate SHA/image digest、Container Apps target、IQA-001/IQA-003、CI、UAT、发布审批、Review 与 Merge 证据仍未产生。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 synthetic 场景不能证明 Azure Speech 服务兼容性、完整候选语言集合或真实翻译准确性；这些不是 Coding 通过声明。
+- US1 的 Foundry adapter、translation coordinator、正式 WebSocket handler、浏览器采音与字幕 UI 尚未实施；当前 T022 只使用 test-only Fastify WebSocket 场景验证 US2 client contract。
+- 生产 composition root、OCI image、deployment contract 和最终 runtime 输入仍待后续阶段任务。
+- 未发现阻塞下一批 US1 test-first 实施的问题。
+
+### 实施结论
+
+完成：本 Session 已完成且仅完成 T018 至 T025，使 US2 阶段闭合；静态分析、build、unit、local contract、local functional、fixture 正反例、依赖安全与 diff 格式检查取得真实通过结果。远程 Speech、managed identity、IQA-002 和下游平台证据均如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
