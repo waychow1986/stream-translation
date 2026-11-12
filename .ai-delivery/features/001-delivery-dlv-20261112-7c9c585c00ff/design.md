@@ -8,7 +8,7 @@
 
 本迭代从仅含 Delivery 制品的空应用仓库开始，交付一个浏览器 Web app：浏览器采集会议麦克风音频，单一 Node.js 服务负责 Azure Speech 实时听录、连续语言识别、Azure AI Foundry 中文翻译和字幕回传。目标语言固定为简体中文，用户不选择源语言；服务端配置验收时 Azure Speech 可连续自动检测且 Foundry 可翻译为中文的全部非中文语言交集。
 
-技术栈固定为 Node.js 22 LTS、TypeScript 5、React 19、Vite、Fastify 5、原生 WebSocket、Microsoft Cognitive Services Speech SDK、Vitest 和 Playwright。前后端使用同一 npm workspace 和同一进程产物；生产容器为 Linux OCI image，监听 `0.0.0.0:8080`，由 Azure Container Apps 提供 HTTPS/WSS ingress 与 managed identity。
+技术栈固定为 Node.js 22 LTS、TypeScript 5、React 19、Vite、Fastify 5、`@fastify/websocket`、TypeBox、Microsoft Cognitive Services Speech SDK、Vitest 和 Playwright；传输使用标准 WebSocket protocol，不引入 Socket.IO 等附加协议。前后端使用同一 npm workspace 和同一进程产物；生产容器为 Linux OCI image，监听 `0.0.0.0:8080`，由 Azure Container Apps 提供 HTTPS/WSS ingress 与 managed identity。
 
 语音路径不落盘。浏览器将麦克风输入转换为 16 kHz、16-bit little-endian、单声道 PCM，服务端通过 `PushAudioInputStream` 写入 Azure Speech。Speech SDK 使用 `LanguageIdMode=Continuous` 和服务端候选 locale 集合。每个已确认 STT segment 按识别顺序发送给 Foundry Responses-compatible streaming API，目标部署必须接受 `reasoning: {"effort":"none"}`；模型只返回对应的简体中文译文。gpt-sol-6.1 是首选部署候选而不是代码耦合点，部署前 contract 验证其在目标 tenant/region 可用且支持该参数；否则选择同一 Foundry project 内满足相同 contract 的部署，不改变产品行为。
 
@@ -118,7 +118,7 @@ TypeScript build、Vite、Vitest、Playwright、npm 和编辑器本地输出必�
 - `GET /api/v1/capabilities`：返回 `protocolVersion`、固定音频格式和不含凭据的候选 locale 清单，供 UI 展示/诊断；不是用户选择源语言的入口。
 - `GET /api/v1/stream`：仅接受 WebSocket upgrade、允许的同源 Origin 和子协议 `stream-translation.v1`；其他请求返回 400/426。
 
-所有 JSON 使用 UTF-8，字段默认封闭，未知消息类型或未知必填字段组合被拒绝。HTTP 错误响应只含稳定 code 与 correlation id，不回显输入或供应商错误。
+所有 JSON 使用 UTF-8。client request 与 client-to-server WebSocket message 的 schema 封闭，未知字段、未知消息类型或未知必填字段组合被拒绝；server response 可按 v1 兼容性规则增加 optional 字段。HTTP 错误响应只含稳定 code 与 correlation id，不回显输入或供应商错误。
 
 ### WebSocket v1
 
