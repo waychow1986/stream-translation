@@ -2,14 +2,6 @@
   "sourceArtifacts": {
     "reports/convergence.md": "f115d24faf6e8c65335e4c5b989f8bfb1e5cf0e7a9668a4afdb220973288d312"
   },
-  "passed": false,
-  "blockers": [
-    {
-      "category": "contradicts",
-      "artifact": "tasks-implementation.md",
-      "path": "tests/functional/fixtures/manifest.schema.json",
-      "description": "IQA-003 fixture JSON Schema \u5BF9 silence \u4E0E after-silence \u5185\u5BB9\u5B57\u6BB5\u7684\u8981\u6C42\u548C\u8FD0\u884C\u65F6\u6821\u9A8C\u5668\u3001\u793A\u4F8B manifest \u76F8\u53CD\u3002",
-      "route": "coding-repair"
-    }
-  ]
+  "passed": true,
+  "blockers": []
 }
