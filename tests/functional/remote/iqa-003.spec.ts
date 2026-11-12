@@ -43,11 +43,18 @@ if (process.env.VITEST) {
     expect(silenceStages.every(({ subtitleCount }) => subtitleCount === 0)).toBe(true);
     expect(recoveredStages).toHaveLength(fixtures.length);
     expect(recoveredStages.every(({ subtitleCount }) => subtitleCount > 0)).toBe(true);
-    expect(
-      evidence.events
-        .filter(({ inputStage }) => inputStage === "after-silence")
-        .every(({ expectedChineseMatched }) => expectedChineseMatched),
-    ).toBe(true);
+    for (const fixture of fixtures) {
+      const events = evidence.events.filter(({ fixtureId }) => fixtureId === fixture.id);
+      expect(events.map(({ semanticUnitId }) => semanticUnitId)).toEqual([
+        "before-silence",
+        "after-silence",
+      ]);
+      expect(
+        events.every(
+          ({ expectedChineseMatched, localeMatched }) => expectedChineseMatched && localeMatched,
+        ),
+      ).toBe(true);
+    }
     await persistIqaEvidence(evidence);
   });
 }

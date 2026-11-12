@@ -9,6 +9,17 @@ export type IqaEvidence = {
     locale: string;
     expectedSourceText: string;
     expectedChinese: string[];
+    contentSegments?: {
+      id: string;
+      expectedSourceText: string;
+      expectedChinese: string[];
+    }[];
+    stages?: {
+      id: string;
+      kind: "speech" | "silence";
+      expectedSourceText?: string;
+      expectedChinese?: string[];
+    }[];
   }[];
   audioEnds: { fixtureId: string; frame: number; sentAt: string }[];
   stages: {
@@ -21,11 +32,14 @@ export type IqaEvidence = {
   events: {
     fixtureId: string;
     inputStage: string;
+    semanticUnitId: string;
     observedFrame: number;
     beforeAudioEnd: boolean;
     serverSequence: number;
     ordinal: number;
     locale: string;
+    declaredLocale: string;
+    localeMatched: boolean;
     subtitle: string;
     expectedChineseMatched: boolean;
   }[];
@@ -71,10 +85,13 @@ export function assertIqaEvidence(value: IqaEvidence): void {
       (event) =>
         !event.fixtureId ||
         !event.inputStage ||
+        !event.semanticUnitId ||
         !Number.isSafeInteger(event.observedFrame) ||
         !Number.isSafeInteger(event.serverSequence) ||
         !Number.isSafeInteger(event.ordinal) ||
         !event.locale ||
+        !event.declaredLocale ||
+        !event.localeMatched ||
         !event.subtitle ||
         !event.expectedChineseMatched,
     )

@@ -65,7 +65,7 @@
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "kind", "startFrame", "endFrame"],
+                "required": ["id", "kind", "startFrame", "endFrame", "expectedSourceText", "expectedChinese"],
                 "properties": {
                   "id": { "const": "before-silence" },
                   "kind": { "const": "speech" },
@@ -82,7 +82,7 @@
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "kind", "startFrame", "endFrame"],
+                "required": ["id", "kind", "startFrame", "endFrame", "expectedSourceText", "expectedChinese"],
                 "properties": {
                   "id": { "const": "silence" },
                   "kind": { "const": "silence" },

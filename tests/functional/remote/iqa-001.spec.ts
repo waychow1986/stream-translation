@@ -35,12 +35,20 @@ if (process.env.VITEST) {
       manifest: bundle,
     });
     assertIqaEvidence(evidence);
-    expect(evidence.events.length).toBeGreaterThanOrEqual(2);
-    expect(evidence.events.every(({ expectedChineseMatched }) => expectedChineseMatched)).toBe(true);
+    expect(evidence.fixtures).toHaveLength(1);
+    const fixture = evidence.fixtures[0]!;
+    const expectedSegments = fixture.contentSegments!.map(({ id }) => id);
+    expect(expectedSegments.length).toBeGreaterThanOrEqual(2);
+    expect(evidence.events.map(({ semanticUnitId }) => semanticUnitId)).toEqual(expectedSegments);
+    expect(
+      evidence.events.every(
+        ({ expectedChineseMatched, localeMatched }) => expectedChineseMatched && localeMatched,
+      ),
+    ).toBe(true);
     expect(evidence.events.map(({ ordinal }) => ordinal)).toEqual(
       [...evidence.events.map(({ ordinal }) => ordinal)].sort((left, right) => left - right),
     );
-    expect(evidence.events.some(({ beforeAudioEnd }) => beforeAudioEnd)).toBe(true);
+    expect(evidence.events[0]?.beforeAudioEnd).toBe(true);
     await persistIqaEvidence(evidence);
   });
 }
