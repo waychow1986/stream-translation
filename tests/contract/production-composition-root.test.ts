@@ -49,11 +49,9 @@ describe("production composition root", () => {
       })
     ).app;
 
-    await expect(app.inject({ method: "GET", url: "/candidate-identity" })).resolves.toMatchObject({
-      statusCode: 200,
-      json: expect.any(Function),
-    });
-    expect((await app.inject({ method: "GET", url: "/candidate-identity" })).json()).toEqual({
+    const response = await app.inject({ method: "GET", url: "/candidate-identity" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
       deliveryId: "DLV-test",
       candidateSha: "a".repeat(40),
     });
