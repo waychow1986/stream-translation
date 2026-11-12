@@ -12,7 +12,8 @@
     "build:server": "tsc --noEmit && vite build --ssr src/server/index.ts --outDir dist/server",
     "build": "npm run clean && npm run build:client && npm run build:server",
     "test:contract": "vitest run tests/contract --passWithNoTests",
-    "test:functional": "playwright test tests/functional/*.spec.ts tests/functional/remote/*.spec.ts --pass-with-no-tests"
+    "test:functional": "playwright test tests/functional/*.spec.ts tests/functional/remote/*.spec.ts --pass-with-no-tests",
+    "test:remote": "vitest run tests/functional/remote/remote-suite.test.ts && playwright test tests/functional/remote/*.spec.ts"
   },
   "license": "ISC",
   "dependencies": {
@@ -30,6 +31,7 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.3.0",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
