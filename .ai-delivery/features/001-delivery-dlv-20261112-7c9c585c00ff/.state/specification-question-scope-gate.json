@@ -1,0 +1,17 @@
+{
+  "stage": "specification-question-scope",
+  "passed": false,
+  "findings": [
+    {
+      "id": "PQ-SCOPE-001",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "spec.md",
+      "owner": "specification",
+      "summary": "PQ-001 包含要求产品负责人新增固定数值时限的未批准选项",
+      "recommendation": "删除或改写选项 B，仅保留解释已批准实时语义且不引入数值阈值或额外质量目标的范围内选项，并同步调整答复说明。",
+      "route": "current_stage",
+      "reasonType": "contradiction"
+    }
+  ]
+}
