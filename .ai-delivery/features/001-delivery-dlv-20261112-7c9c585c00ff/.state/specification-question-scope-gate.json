@@ -1,5 +1,17 @@
 {
   "stage": "specification-question-scope",
-  "passed": true,
-  "findings": []
+  "passed": false,
+  "findings": [
+    {
+      "id": "SPEC-QS-001",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "spec.md",
+      "owner": "specification",
+      "summary": "PQ-002 将技术选择与取证要求错误地作为产品澄清",
+      "recommendation": "删除 PQ-002 及其作为产品审批门禁的关联表述；保留由业务所采用翻译能力参数化确定完整合格源语言集合的产品义务，并将具体能力选择、权威技术来源及证据时点留给后续技术阶段决定和验证。",
+      "route": "current_stage",
+      "reasonType": "governance"
+    }
+  ]
 }
