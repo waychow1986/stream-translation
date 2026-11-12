@@ -274,8 +274,8 @@ active Feature 的 `runtime/deployment.json` 记录 container port、`/healthz`�
 | 前后端 build 与 OCI image build | 平台 CI | clean runner/container builder | 锁定 npm 依赖与 Docker；无 Azure 凭据 | 可重放 build 命令、Dockerfile、lockfile | 同一 Candidate image digest |
 | 协议、顺序、中文输出约束、错误隔离、静音后恢复单元/contract 测试 | Coding | Vitest + synthetic adapters | 合成事件与非敏感 fixture；无 Azure 凭据 | developerTests 结果，覆盖 FR-001 至 FR-005 的辅助断言 | CI 重放结果；不作为真实集成通过 |
 | 浏览器采音、WSS 和字幕渲染 functional 辅助测试 | Coding / 平台 CI | Playwright、虚拟音频输入、本地 synthetic server | Chromium 与测试 fixture；无 Azure 凭据 | 可执行场景、输入阶段、事件与 UI 结果 | clean runner 的本地功能辅助结果 |
-| Speech adapter contract | 远程 integration | 已批准 Azure Speech 测试资源 | Candidate managed identity/RBAC、目标 endpoint、完整候选 locale 集合、可核对流式音频 | adapter contract、配置 schema、correlation 证据格式 | 固定 PCM、continuous LID、完整集合逐语言识别及连续会话结果 |
-| Foundry adapter contract | 远程 integration | 已批准 Foundry project/model deployment | Candidate managed identity/RBAC、endpoint、deployment | 请求 schema、关闭 reasoning 断言、无内容日志证据 | deployment 可用、reasoning 关闭、中文 streaming contract 结果 |
+| Speech adapter contract/integration | Independent QA | 已批准 Azure Speech integration 测试资源上的精确 Candidate | Candidate managed identity/RBAC、目标 endpoint、完整候选 locale 集合、可核对流式音频 | adapter contract、配置 schema、correlation 证据格式 | 固定 PCM、continuous LID、完整集合逐语言识别及连续会话结果 |
+| Foundry adapter contract/integration | Independent QA | 已批准 Foundry integration project/model deployment 上的精确 Candidate | Candidate managed identity/RBAC、endpoint、deployment | 请求 schema、关闭 reasoning 断言、无内容日志证据 | deployment 可用、reasoning 关闭、中文 streaming contract 结果 |
 | IQA-001 外语发言期间持续字幕 | Independent QA | 已部署的精确 Candidate 与真实 Azure 测试服务 | Browser/可核对流式音频、两项 Azure 能力 | Candidate 中的可执行测试入口及 correlation/sequence 证据 | 发言结束前字幕、多次有序输出与输入边界证据 |
 | IQA-002 未预设语言自动识别翻译 | Independent QA | 同一 Candidate/target | 完整合格语言交集及逐语言测试音频 | 无源语言 UI/协议字段、locale 与字幕证据格式 | 带日期完整交集清单、逐语言自动识别和中文字幕结果 |
 | IQA-003 暂时无可识别内容后继续 | Independent QA | 同一 Candidate/target | 可识别语音—无可识别内容—可识别语音 fixture | 三阶段 sequence/segment 证据格式 | 中段无虚构翻译、后段无需选语言恢复的结果 |
@@ -292,7 +292,7 @@ active Feature 的 `runtime/deployment.json` 记录 container port、`/healthz`�
    - 注入一个 translation failure，确认该 ordinal 为 error 且下一 segment 继续；
    - 发送错误 sequence、格式或 frame 长度，确认稳定 protocol error 且不回显内容。
 4. 构建 OCI image，以非 root 用户启动并重复 health 和本地 functional 辅助场景；记录 Candidate SHA 和 image digest。
-5. 平台将该 digest 部署到批准的 Container Apps integration target，以 managed identity 分别运行 Speech 和 Foundry contract。先确认完整候选语言交集、固定音频格式、关闭 reasoning 和 streaming contract，再执行 IQA-001 至 IQA-003。
+5. 平台将该 digest 部署到批准的 Container Apps integration target；Independent QA 以 Candidate managed identity 分别运行 Speech 和 Foundry contract/integration，先确认完整候选语言交集、固定音频格式、关闭 reasoning 和 streaming contract，再执行 IQA-001 至 IQA-003。
 6. QA 保存输入阶段、发言结束边界、服务端 sequence/ordinal、语言识别结果、每次中文字幕、完整语言交集、Candidate SHA、image digest 和 target。只有全部 AC 的真实服务结果齐备才可通过；本地 synthetic、build 和 health 结果不得替代。
 
 ## 支持 Runbook
