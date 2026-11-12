@@ -18,6 +18,18 @@ export class SessionStateMachine {
     return this.#resources.size;
   }
 
+  get lastOrdinal(): number {
+    return this.#ordinal;
+  }
+
+  observeOrdinal(ordinal: number): void {
+    this.#requireActive();
+    if (!Number.isSafeInteger(ordinal) || ordinal !== this.#ordinal + 1) {
+      throw new Error(`invalid segment ordinal: expected ${this.#ordinal + 1}`);
+    }
+    this.#ordinal = ordinal;
+  }
+
   start(sequence: number): void {
     this.#requireState("connected");
     this.#acceptClientSequence(sequence);

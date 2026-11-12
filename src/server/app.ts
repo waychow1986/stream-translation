@@ -6,29 +6,50 @@ import type { SpeechAdapter, TranslationAdapter } from "./adapters/types";
 import { HealthState } from "./health";
 import { LifecycleController } from "./lifecycle";
 import { registerStaticWeb } from "./static-web";
+import { registerTranslationWebSocket } from "./websocket/handler";
 
 export type AppDependencies = {
-  speechAdapter: SpeechAdapter;
-  translationAdapter: TranslationAdapter;
+  speechAdapter?: SpeechAdapter;
+  translationAdapter?: TranslationAdapter;
+  createSpeechAdapter?: () => SpeechAdapter;
+  createTranslationAdapter?: () => TranslationAdapter;
   clientRoot?: string | false;
   health?: HealthState;
   lifecycle?: LifecycleController;
+  appOrigin?: string;
 };
 
 export function createApp(dependencies: AppDependencies): FastifyInstance {
+  if (
+    (!dependencies.speechAdapter && !dependencies.createSpeechAdapter) ||
+    (!dependencies.translationAdapter && !dependencies.createTranslationAdapter)
+  ) {
+    throw new Error("speech and translation adapters are required");
+  }
   const app = Fastify({ logger: false });
   const health = dependencies.health ?? new HealthState();
   const lifecycle =
     dependencies.lifecycle ?? new LifecycleController(health, { gracePeriodMs: 30_000 });
 
-  app.decorate("speechAdapter", dependencies.speechAdapter);
-  app.decorate("translationAdapter", dependencies.translationAdapter);
+  app.decorate(
+    "createSpeechAdapter",
+    dependencies.createSpeechAdapter ?? (() => dependencies.speechAdapter as SpeechAdapter),
+  );
+  app.decorate(
+    "createTranslationAdapter",
+    dependencies.createTranslationAdapter ??
+      (() => dependencies.translationAdapter as TranslationAdapter),
+  );
   app.decorate("healthState", health);
   app.decorate("lifecycle", lifecycle);
 
   app.get("/healthz", async (_request, reply) => {
     const result = health.status();
     return reply.code(result.statusCode).send(result.body);
+  });
+
+  app.register(async (scope) => {
+    await registerTranslationWebSocket(scope, dependencies.appOrigin);
   });
 
   if (dependencies.clientRoot !== false) {
@@ -40,8 +61,8 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
 
   app.addHook("onClose", async () => {
     await Promise.all([
-      dependencies.speechAdapter.close(),
-      dependencies.translationAdapter.cancel(),
+      dependencies.speechAdapter?.close(),
+      dependencies.translationAdapter?.cancel(),
     ]);
   });
 
@@ -50,8 +71,8 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
 
 declare module "fastify" {
   interface FastifyInstance {
-    speechAdapter: SpeechAdapter;
-    translationAdapter: TranslationAdapter;
+    createSpeechAdapter(): SpeechAdapter;
+    createTranslationAdapter(): TranslationAdapter;
     healthState: HealthState;
     lifecycle: LifecycleController;
   }

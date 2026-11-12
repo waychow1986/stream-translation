@@ -286,3 +286,74 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T018 至 T025，使 US2 阶段闭合；静态分析、build、unit、local contract、local functional、fixture 正反例、依赖安全与 diff 格式检查取得真实通过结果。远程 Speech、managed identity、IQA-002 和下游平台证据均如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
+
+## Coding Session coding-attempt-01-batch-05-operation-018
+
+### 实施范围
+
+本 Session 在 12 项上限内按 test-first 顺序完成 US1 的 T026 至 T037。先创建 translation coordinator、Foundry、WebSocket、浏览器辅助场景、IQA-001/IQA-003 remote suite 和 production composition root 测试并保留实现前失败，再实现每会话 Foundry/Speech adapter factory、Foundry Responses streaming adapter、FIFO coordinator、Fastify WebSocket handler 和正常生产入口。所有本地执行均未读取 Azure 配置、凭据或访问远程服务。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/unit/coordinator.test.ts`、`tests/unit/foundry-translation.test.ts` | 覆盖 FIFO、partial/final、错误隔离、retry、reasoning 关闭及 provider event 拒绝 | T026、T027 |
+| `tests/contract/websocket-v1.test.ts`、`tests/contract/foundry-translation.remote.test.ts`、`tests/contract/production-composition-root.test.ts` | 覆盖协议边界、远程 Foundry 入口、真实 adapter 装配和启动失败清理 | T028、T029、T033 |
+| `tests/functional/streaming-subtitles.spec.ts`、`tests/functional/silence-recovery.spec.ts` | 覆盖有序流式字幕、静音无虚构输出及后续恢复 | T030 |
+| `tests/functional/remote/iqa-001.spec.ts`、`tests/functional/remote/iqa-003.spec.ts`、`tests/functional/remote/remote-suite.test.ts`、`tests/functional/support/remote-candidate.ts` | 建立显式远程 Candidate 输入、fixture、identity、证据与 synthetic target 联网前拒绝边界 | T031、T032 |
+| `src/server/adapters/foundry-translation.ts` | 实现 managed identity、固定简体中文 instruction、关闭 reasoning、SSE 文本流解析及首次输出前一次 retry | T034 |
+| `src/server/session/coordinator.ts`、`src/server/session/state-machine.ts` | 实现每会话 FIFO、累计 partial、唯一 final、错误隔离、ordinal/revision/sequence 与内容释放 | T035 |
+| `src/server/websocket/handler.ts`、`src/server/app.ts` | 实现同源/subprotocol/状态/帧配对校验、每连接 adapter factory 和生命周期注册 | T036 |
+| `src/server/index.ts` | 实现经校验配置创建真实 Azure adapters 的 production composition root 和正常服务入口 | T037 |
+| `package.json`、`package-lock.json` | 增加 remote suite 命令及锁定的 WebSocket 测试类型声明 | T028、T032 |
+| `tests/functional/automatic-language-detection.spec.ts` | 改由正式 Candidate WebSocket handler 重放既有 US2 辅助场景 | T036 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/tasks-implementation.md` | 仅将 T026 至 T037 checkbox 更新为完成 | T026-T037 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-003 / AC-002 | `src/server/adapters/foundry-translation.ts` | `tests/unit/foundry-translation.test.ts` | 固定简体中文、流式文本、关闭 reasoning、拒绝 tool/reasoning/空输出及 retry 断言通过 |
+| FR-003 / FR-004 / FR-005 / AC-003 / AC-004 | `src/server/session/coordinator.ts`、`src/server/websocket/handler.ts` | `tests/unit/coordinator.test.ts`、`tests/functional/streaming-subtitles.spec.ts`、`tests/functional/silence-recovery.spec.ts` | FIFO、序号、发言结束前有序字幕、静音无虚构输出及后续恢复辅助断言通过 |
+| FR-001 / WebSocket v1 Contract | `src/server/websocket/handler.ts`、`src/server/app.ts` | `tests/contract/websocket-v1.test.ts` | origin/subprotocol、状态、sequence、metadata/binary 配对、640-byte frame、drain 与无内容错误断言通过 |
+| IQA-001 / IQA-003 remote readiness | `tests/functional/support/remote-candidate.ts` | `tests/functional/remote/iqa-001.spec.ts`、`tests/functional/remote/iqa-003.spec.ts`、`tests/functional/remote/remote-suite.test.ts` | 三个 remote 入口可发现并默认 skip；fixture、证据和 target 在联网前校验；真实结果延后 |
+| Production composition root | `src/server/index.ts`、`src/server/app.ts` | `tests/contract/production-composition-root.test.ts` | 正常入口仅创建真实 Azure adapter factory，启动失败清理与 production build 通过 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `npm test -- tests/unit/coordinator.test.ts ...`（安装前） | 无 `node_modules` 的 Coding workspace | 失败，退出码 127 | `vitest: not found`；随后仅按锁文件执行 `npm ci` |
+| `npm ci && npm test -- tests/unit/coordinator.test.ts ...`（实现前） | Node.js 22、无 Azure 配置 | 安装通过、测试预期失败，退出码 1 | 安装 269 个 package、0 vulnerability；缺少 coordinator/Foundry module、production root 和 WebSocket route 形成 test-first 证据 |
+| `npm run staticAnalysis` | 本地 Node.js 22、无 Azure 配置 | 通过，退出码 0 | TypeScript strict 与 ESLint 通过 |
+| `npm test` | 本地 Vitest、无网络 | 通过，退出码 0 | 17 个 test file、49 项断言通过；9 个 Playwright/远程入口明确 skip |
+| `npm run test:contract` | 本地 Fastify、synthetic adapters、无 Azure 配置 | 通过，退出码 0 | 5 个 file、11 项 contract 断言通过；2 个真实 Azure remote contract 明确 skip |
+| `npm run build` | 本地 Node.js 22、无 Azure 配置 | 通过，退出码 0 | Vite client 转换 12 个 module；server 转换 14 个 module，生成 `dist/client` 与 `dist/server/index.js` |
+| `npm run test:functional` | 本地 Playwright、Candidate Fastify test DI、synthetic adapters | 通过，退出码 0 | 4 个本地场景通过；IQA-001 至 IQA-003 三个 remote 场景明确 skip |
+| `npm run test:remote` | 本地 remote-readiness suite、无远程输入 | 通过，退出码 0 | 3 项前置/证据/target 边界断言通过；3 个远程场景可发现并明确 skip，未发起网络请求 |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `git diff --check 631659bfa4bd6ff24206f6e4c5f99ea0f815822a` | immutable Session base 对比 | 通过，退出码 0 | 未发现 whitespace error |
+
+### Runtime 与下游门禁就绪制品
+
+- `dist/server/index.js` 的正常入口现从已校验 server 配置创建每连接真实 `AzureSpeechAdapter` 与 `FoundryTranslationAdapter`，不存在客户端、query 或 production 环境变量 synthetic 切换入口。
+- IQA-001 至 IQA-003 已有统一 `npm run test:remote` 发现入口；只有完整外部 fixture bundle、credential-free HTTPS Candidate URL、Candidate identity 和显式 remote 开关齐备后才可联网。
+- 当前尚未到 T038-T042，未创建浏览器生产 UI、`Dockerfile`、active Feature `runtime/deployment.json` 或 developer functional script；未修改 `.github/workflows/`。
+
+### 延后平台证据
+
+- Foundry deployment 对关闭 reasoning 的真实接受结果、无 reasoning stream、managed identity/RBAC、Speech 完整候选语言交集及真实音频结果延后至已部署精确 Candidate 上的 Independent QA。
+- IQA-001 至 IQA-003 的真实 Candidate identity、target、fixture hash、输入边界、server sequence/ordinal、locale 和中文字幕证据尚未产生；本 Session 仅验证可执行入口与联网前 contract。
+- 最终 Candidate SHA/image digest、Container Apps target、CI、UAT、发布审批、Review 与 Merge 证据仍未产生。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 synthetic 场景只能证明应用协议、顺序、错误隔离和恢复辅助行为，不能证明 Azure 服务兼容性或真实翻译验收。
+- US1 的浏览器生产麦克风、AudioWorklet 与 React 字幕 UI（T038）以及 Polish T039-T042 尚未实施。
+- Foundry API 路径、deployment、API version 和 reasoning-off contract 必须由 T029 的远程入口在目标环境验证；代码不提供 fallback。
+- 未发现阻塞下一批 T038 的问题。
+
+### 实施结论
+
+完成：本 Session 已完成且仅完成 T026 至 T037，共 12 项 US1 任务；静态分析、build、unit、local contract、local functional、remote-readiness、依赖安全及 diff 格式检查取得真实通过结果。真实 Azure、IQA 和下游平台证据均如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
