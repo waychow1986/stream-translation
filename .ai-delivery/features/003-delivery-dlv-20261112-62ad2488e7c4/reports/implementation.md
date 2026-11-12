@@ -634,3 +634,64 @@
 ### 实施结论
 
 完成：本 Session 已定向闭合 Convergence 指出的 4 个既有测试证据缺口。focused contract、真实浏览器用户链路、声明的 static analysis、build、developer tests、local contract、local functional、remote readiness、依赖安全、immutable-base 路径、任务/workflow 不变性及 secret 检查均取得真实通过结果；真实 Azure 与部署后 IQA 结果如实延后。按 `coding-repair` 退出约束停止，不部署、不审批、不合并。
+
+## Coding Session coding-attempt-01-batch-08-operation-026
+
+### 实施范围
+
+本 Session 以 `coding-repair` 模式仅修复 CONV-005：使 IQA-003 fixture JSON Schema 与既有运行时校验器、example manifest 对三个阶段的内容字段要求一致，并增加在 schema、运行时语义和 example 再次分歧时确定性失败的回归检查。修复沿用 T020、T041，不修改任务文本、checkbox、产品行为、技术决策、runtime、平台 workflow 或其他 Feature。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/functional/fixtures/manifest.schema.json` | `silence` 阶段禁止内容字段；`after-silence` speech 阶段要求非空 `expectedSourceText` 和 `expectedChinese` | T020、T041 |
+| `tests/functional/support/audio-fixture-bundle.test.ts` | 增加 schema、运行时三阶段语义与 example 字段契约一致性回归检查 | T020、T041 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| IQA-003 / AC-004 / CONV-005 | 外部 fixture bundle 的既有运行时校验器及修复后的 checked-in schema | `tests/functional/support/audio-fixture-bundle.test.ts`、`tests/functional/fixtures/manifest.example.json` | 两个 speech 阶段均要求内容语义，silence 阶段禁止内容字段；example 与 schema 一致，focused 回归通过 |
+| IQA-001 至 IQA-003 下游输入就绪 | 既有 remote suite 与 runtime 入口，未修改 | 声明的 developer、contract、functional 与 remote-readiness suites | 全部本地适用检查通过；真实 Azure 场景按职责明确 skip |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 初次 focused Vitest | 尚未执行声明 setup 的 Coding workspace | 失败，退出码 127 | `vitest: not found`；随后仅执行已声明的 `npm ci` |
+| `npm ci` | Node.js 22、锁定依赖、无 Azure 配置 | 通过，退出码 0 | 安装 270 个 package；audit 报告 0 个漏洞 |
+| 修复前 focused Vitest | 已安装锁定依赖、schema 尚未修复 | 预期失败，退出码 1 | 新回归检查检测到 `silence` schema 错误包含 `expectedSourceText`、`expectedChinese` |
+| 修复后 `npm test -- --run tests/functional/support/audio-fixture-bundle.test.ts` | 本地、无网络 | 通过，退出码 0 | 1 个 test file、3 项断言通过 |
+| `npx playwright install chromium` | 仓库外 Playwright cache | 通过，退出码 0 | 安装锁定 Chromium、Headless Shell 与 FFmpeg，未产生仓库 diff |
+| `npm run staticAnalysis` | 本地、无 Azure 配置 | 通过，退出码 0 | TypeScript 与 ESLint 均通过 |
+| `npm run build` | 本地 production build | 通过，退出码 0 | client、AudioWorklet asset 与 `dist/server/index.js` 构建成功 |
+| `npm test` | 本地 Vitest、无网络 | 通过，退出码 0 | 17 个 test file、55 项断言通过；9 项真实远程/Playwright 入口明确 skip |
+| `npm run test:contract` | 本地 contract suite、无 Azure 配置 | 通过，退出码 0 | 5 个 local file、12 项断言通过；2 个真实 Azure contract 明确 skip |
+| `npm run test:functional` | 本地 Playwright、已 build | 通过，退出码 0 | 4 项 local functional 通过；3 项 remote IQA 明确 skip |
+| `npm run test:remote` | 本地 remote readiness、无远程输入 | 通过，退出码 0 | 4 项 readiness 断言通过；3 项 remote IQA 明确 skip |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `git diff --check`、immutable-base path/任务/workflow/secret scan | 对比 `15bfc6c2f3578cb277643223d38b26cbbfa41106` | 通过，退出码 0 | 变更仅位于批准 manifest；任务与 workflow 无 diff；无 whitespace error、credential value 或 private key |
+
+### Runtime 与下游门禁就绪制品
+
+- 既有 `runtime/deployment.json`、developer functional script、Dockerfile、Candidate identity 与 readiness 制品保持不变。
+- checked-in schema 现与运行时校验器和 example manifest 统一：`before-silence`、`after-silence` speech 阶段必须声明非空源文本和预期中文，`silence` 阶段不得声明内容字段。
+- 新回归检查逐阶段核对 schema 的 `properties`、`required`、`additionalProperties` 与 example，既有 runtime 正反例继续验证相同三阶段语义。
+
+### 延后平台证据
+
+- Coding 环境按 Constitution 未访问 Azure 或远程部署。真实 Speech/Foundry、managed identity/RBAC、完整候选 locale、IQA-001 至 IQA-003 结果仍由部署后精确 Candidate 上的平台阶段产生。
+- 最终 integrated Candidate SHA、image digest、deployment target、CI、Independent QA、UAT、发布审批、Review 与 Merge 证据尚未产生。
+- 当前本地 schema/runtime/example 一致性检查仅证明下游 fixture contract 已就绪，不替代真实外部 integration 验收。
+
+### 限制、剩余风险与阻塞项
+
+- CONV-005 的 schema 矛盾已闭合；真实外部 fixture 内容、Azure 服务能力和部署后 IQA 结果仍需下游验证。
+- Convergence 已记录的非阻塞 `Retry-After` 技术偏差不属于本 Session 批准修复范围，保持未修改。
+- 未修改 production 应用、任务账本、批准上游制品、runtime 或 workflow；未发现需要范围申请的新路径。
+
+### 实施结论
+
+完成：CONV-005 已按 T020、T041 定向修复。测试先证明原 schema 与既有运行时/example contract 分歧，修复后 focused regression、全部声明的 static analysis、build、developer tests、local contract、local functional、remote readiness、依赖安全、immutable-base 路径、任务/workflow 不变性及 secret 检查均取得真实通过结果；真实 Azure 与部署后 IQA 证据如实延后。按 `coding-repair` 退出约束停止，不部署、不审批、不合并。

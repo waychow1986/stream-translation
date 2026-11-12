@@ -75,6 +75,53 @@ async function bundle(overrides: Record<string, unknown> = {}) {
 }
 
 describe("external audio fixture bundle", () => {
+  it("keeps the checked-in IQA-003 stage schema aligned with runtime and example semantics", async () => {
+    const fixturesRoot = join(import.meta.dirname, "..", "fixtures");
+    const schema = JSON.parse(
+      await readFile(join(fixturesRoot, "manifest.schema.json"), "utf8"),
+    ) as {
+      properties: {
+        fixtures: {
+          items: {
+            properties: {
+              stages: {
+                prefixItems: {
+                  additionalProperties: boolean;
+                  required: string[];
+                  properties: Record<string, unknown>;
+                }[];
+              };
+            };
+          };
+        };
+      };
+    };
+    const example = JSON.parse(
+      await readFile(join(fixturesRoot, "manifest.example.json"), "utf8"),
+    ) as { fixtures: { stages: Record<string, unknown>[] }[] };
+    const stageSchemas =
+      schema.properties.fixtures.items.properties.stages.prefixItems;
+    const expectedContentFields = ["expectedChinese", "expectedSourceText"];
+
+    expect(stageSchemas).toHaveLength(3);
+    for (const [index, stageSchema] of stageSchemas.entries()) {
+      const stage = example.fixtures[0]!.stages[index]!;
+      const contentFields = Object.keys(stageSchema.properties)
+        .filter((key) => expectedContentFields.includes(key))
+        .sort();
+      const requiredContentFields = stageSchema.required
+        .filter((key) => expectedContentFields.includes(key))
+        .sort();
+      const expectedFields = stage.kind === "speech" ? expectedContentFields : [];
+
+      expect(stageSchema.additionalProperties).toBe(false);
+      expect(contentFields).toEqual(expectedFields);
+      expect(requiredContentFields).toEqual(expectedFields);
+      expect(Object.keys(stage).every((key) => key in stageSchema.properties)).toBe(true);
+      expect(stageSchema.required.every((key) => key in stage)).toBe(true);
+    }
+  });
+
   it("validates semantics, stages, format, hash, complete locale coverage, and all IQA references", async () => {
     await expect(loadAudioFixtureBundle(await bundle(), ["en-US"])).resolves.toMatchObject({
       sourceApproval: "generated test audio",
