@@ -1,0 +1,58 @@
+{
+  "containerPort": 3000,
+  "healthPath": "/healthz",
+  "candidateIdentityPath": "/candidate-identity",
+  "webSocketPath": "/ws/v1/translate",
+  "migrationCommand": [],
+  "developerSetupCommands": [
+    "npm ci",
+    "npx playwright install chromium"
+  ],
+  "developerValidationCommands": {
+    "staticAnalysis": [
+      "npm run staticAnalysis"
+    ],
+    "build": [
+      "npm run build"
+    ],
+    "developerTests": [
+      "npm test",
+      "npm run test:contract"
+    ],
+    "functionalTests": [
+      "npm run test:functional",
+      "npm run test:remote"
+    ]
+  },
+  "developerFunctionalTestScript": ".ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/developer-functional-run.sh",
+  "requiresPrivateNetwork": false,
+  "managedIdentity": {
+    "required": true,
+    "preferredType": "systemAssigned"
+  },
+  "configuration": {
+    "nonSecretEnvironmentVariables": [
+      "PORT",
+      "APP_ORIGIN",
+      "AZURE_SPEECH_ENDPOINT",
+      "AZURE_SPEECH_CANDIDATE_LOCALES",
+      "AZURE_FOUNDRY_ENDPOINT",
+      "AZURE_FOUNDRY_DEPLOYMENT",
+      "AZURE_FOUNDRY_API_VERSION",
+      "AIDELIVERY_DELIVERY_ID",
+      "AIDELIVERY_CANDIDATE_SHA"
+    ],
+    "optionalEnvironmentVariables": [
+      "AZURE_CLIENT_ID"
+    ],
+    "secretReferences": [],
+    "secretValuesAllowed": false
+  },
+  "terminationGracePeriodSeconds": 30,
+  "candidateAssociation": {
+    "deliveryIdEnvironmentVariable": "AIDELIVERY_DELIVERY_ID",
+    "candidateShaEnvironmentVariable": "AIDELIVERY_CANDIDATE_SHA",
+    "imageDigestProvidedByPlatform": true,
+    "deploymentTargetProvidedByPlatform": true
+  }
+}
