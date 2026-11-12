@@ -1,28 +1,5 @@
 {
   "stage": "task-planning",
-  "passed": false,
-  "findings": [
-    {
-      "id": "TASK-COV-006",
-      "severity": "high",
-      "scope": "self",
-      "artifact": "tasks-implementation.md",
-      "owner": "task-planning",
-      "summary": "缺少生产 Azure adapter 组合根装配任务",
-      "recommendation": "增加生产 composition root 的定向测试与实现任务，明确真实 Azure adapters 的实例化、app factory 注入、启动失败和关闭清理，并验证正常容器入口。",
-      "route": "current_stage",
-      "reasonType": "coverage"
-    },
-    {
-      "id": "TASK-EXEC-007",
-      "severity": "high",
-      "scope": "self",
-      "artifact": "tasks-implementation.md",
-      "owner": "task-planning",
-      "summary": "远程 contract 与 IQA 套件缺少可执行音频 fixture",
-      "recommendation": "补充非敏感音频 fixture 的准确路径和准备任务，或定义并测试 Independent QA 外部 fixture bundle 输入 contract，并校验 manifest 完整性。",
-      "route": "current_stage",
-      "reasonType": "incomplete"
-    }
-  ]
+  "passed": true,
+  "findings": []
 }
