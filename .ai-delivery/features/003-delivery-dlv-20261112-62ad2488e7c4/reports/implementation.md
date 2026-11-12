@@ -144,3 +144,73 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T005-T010、T012-T016，共 11 项 Foundational 任务；聚焦单元与 contract、静态分析、build、local functional discovery、语法、安全审计和 credential pattern scan 均取得当前 Session 的真实通过结果。整个 Delivery 尚未完成，按 bounded Coding 约束停止。
+
+## Coding Session coding-attempt-01-batch-03-operation-016
+
+### 实施范围
+
+本 Session 按依赖顺序完成 Foundational 阶段剩余的 T011、T017，共 2 项任务。先创建进程生命周期 contract 与 production build functional 场景并保留实现前模块缺失失败，再实现不访问 Azure 的 health、无内容日志边界、连接注册、SIGTERM/SIGINT drain、grace timeout 后 cancel/close，以及可注入依赖的 Fastify 启停入口。未开始 US2、US1、Azure adapter、WebSocket handler、容器或 runtime 任务。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/contract/lifecycle.test.ts` | 覆盖 shutdown 后 503、停止接入、正常 drain、超时 cancel/close 与幂等调用顺序 | T011 |
+| `tests/functional/image-lifecycle.spec.ts` | 以 Playwright 启动 production build，发送 SIGTERM，观察 503、grace timeout 与正常退出 | T011 |
+| `src/server/health.ts` | 提供不访问 Azure 的 readiness/shutdown 状态与结构化日志字段 allowlist | T017、T008 |
+| `src/server/lifecycle.ts` | 提供连接注册、停止接入、graceful drain、超时 cancel/close 和幂等 shutdown | T017 |
+| `src/server/index.ts` | 导出生命周期边界并提供 Fastify listen、signal handler、shutdown 与启动失败清理入口 | T017 |
+| `src/server/app.ts` | 将同一 health/lifecycle 实例注入 Fastify，保留 adapter 关闭边界 | T017 |
+| `src/server/adapters/types.ts` | 从新 health 模块兼容重导出既有 health 与日志 API | T017、T008 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/tasks-implementation.md` | 仅将 T011、T017 checkbox 更新为完成 | T011、T017 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| rollout、health、drain 与 rollback / SLO、限制、扩缩容、重试与恢复 | `src/server/health.ts`、`src/server/lifecycle.ts`、`src/server/index.ts` | `tests/contract/lifecycle.test.ts`、`tests/functional/image-lifecycle.spec.ts` | shutdown 顺序、503、拒绝新注册连接、正常 drain、超时 cancel/close 及 production build SIGTERM 场景通过 |
+| 配置、可观测性与运维 / Constitution 内容隔离 | `src/server/health.ts`、`src/server/adapters/types.ts` | `tests/unit/health.test.ts`、`tests/unit/logging.test.ts` | health 不访问 Azure；日志仅保留批准的无内容字段 |
+| FR-001 至 FR-005 / IQA-001 至 IQA-003 | 当前批次只闭合进程生命周期前置能力 | 尚未到达对应用户故事与真实 Azure 场景 | 未声称产品行为、Azure integration 或 Independent QA 通过 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `npm test -- tests/contract/lifecycle.test.ts`、`npm run test:functional -- tests/functional/image-lifecycle.spec.ts`（安装前） | 无 `node_modules` 的 Coding workspace | 失败，退出码 127 | `vitest`、`playwright` 不存在；随后仅按锁文件执行 `npm ci` |
+| `npm ci && npm test -- tests/contract/lifecycle.test.ts`（实现前） | Node.js `v22.23.4`、npm `10.9.9`，无 Azure 配置 | 安装通过、测试预期失败 | 安装 269 个 package、0 vulnerability；测试因 `src/server/health.ts` 尚不存在失败，形成 test-first 证据 |
+| `npm test -- tests/contract/lifecycle.test.ts tests/unit/health.test.ts tests/unit/logging.test.ts` | 本地 Vitest，无网络 | 通过，退出码 0 | 3 个文件、5 项断言通过 |
+| `npm run staticAnalysis` | 本地 Node.js 22，无 Azure 配置 | 通过，退出码 0 | `tsc --noEmit` 与 `eslint .` 均通过 |
+| `npm test` | 同上 | 通过，退出码 0 | 9 个文件、29 项 Vitest 断言通过；image functional 文件在 Vitest 中 1 项明确 skip，由 Playwright 独立执行 |
+| `npm run test:contract` | 本地 Fastify + synthetic boundary，无网络 | 通过，退出码 0 | 3 个 contract 文件、7 项断言通过 |
+| `npm run build && npm run test:functional` | production build + 本地 Playwright，无 Azure 配置 | 通过，退出码 0 | 生成 `dist/client`、`dist/server/index.js`；1 个 SIGTERM image lifecycle 场景通过 |
+| 并行执行 `npm run build`、`npm test`、`npm run test:functional`（首次完整验证） | 同一 workspace | build 通过，unit/functional 失败 | build 的 clean 与 functional 并发导致临时缺少 `dist/server/index.js`；Vitest 同时发现 Playwright `.spec.ts`。改为 runner 隔离并按 build→functional 顺序执行后，最终全部通过 |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `node --check tests/functional/support/image-candidate-server.mjs` | Node.js 22 | 通过，退出码 0 | 既有 image harness 语法有效 |
+| `git diff --check 05d17f51bbf08889add633cc6cf475340e4688da` | immutable session base 对比 | 通过，退出码 0 | 未发现 whitespace error，作为当前仓库无独立 formatter script 时的格式边界检查 |
+
+### Runtime 与下游门禁就绪制品
+
+- production build 现已导出可由后续 composition root 使用的 `startServer`，可安装 SIGTERM/SIGINT handler，并在 shutdown 开始时先把 `/healthz` 置为 503。
+- 生命周期控制器已提供后续 WebSocket handler 所需的连接接入拒绝、drain、cancel 与 close 注册边界；本批次尚未实现 T036 的实际 WebSocket upgrade/连接处理。
+- production build 的本地 SIGTERM functional 场景可执行；T042 仍需在最终 OCI image 中重放同一场景。
+- 当前尚未到 T039-T042，未创建 `Dockerfile`、active Feature `runtime/deployment.json` 或 developer functional test script。
+- 未修改 `.github/workflows/`，未访问 Azure、未部署、未审批或合并。
+
+### 延后平台证据
+
+- 最终 OCI image 内的 lifecycle 重放、Candidate SHA/image digest、Container Apps revision、真实 rollout/drain/rollback 结果延后至 T039-T042 及平台阶段。
+- Azure Speech、Azure AI Foundry、managed identity/RBAC、完整候选语言交集及 IQA-001 至 IQA-003 真实执行结果仍由已部署精确 Candidate 上的 Independent QA 产生。
+- CI clean runner、UAT、发布审批、Review 与 Merge 证据尚未产生。
+
+### 限制、剩余风险与阻塞项
+
+- Foundational 阶段已完成；US2 的 T018 起及其后 US1、Polish、生产 runtime 均未开始。
+- 新连接拒绝已由生命周期注册 contract 证明；实际 WebSocket upgrade 必须在 T036 将 handler 接入该边界后才能取得端到端协议证据。
+- 当前 image functional 使用 production build 与本地 test-injected adapters，不是最终 OCI image，也不证明 Azure 或用户可见翻译行为。
+- 仓库没有独立 format script；本 Session 执行 ESLint 与 `git diff --check`，未新增格式工具。
+- 未发现阻塞下一批 US2 test-first 实施的问题。
+
+### 实施结论
+
+完成：本 Session 已完成且仅完成 T011、T017，使 Foundational 阶段闭合；生命周期 contract、production build SIGTERM functional、静态分析、build、unit、local contract/integration、local functional、语法、依赖安全和 diff 格式检查均取得最终真实通过结果。整个 Delivery 尚未完成，按 bounded Coding 约束停止。
