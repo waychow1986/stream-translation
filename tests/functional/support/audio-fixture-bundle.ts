@@ -10,12 +10,21 @@ export type AudioFixture = {
   expectedSourceText: string;
   expectedChinese: string[];
   continuousContent: boolean;
+  contentSegments?: {
+    id: string;
+    startFrame: number;
+    endFrame: number;
+    expectedSourceText: string;
+    expectedChinese: string[];
+  }[];
   silenceIntervals?: { startFrame: number; endFrame: number }[];
   stages?: {
     id: "before-silence" | "silence" | "after-silence";
     kind: "speech" | "silence";
     startFrame: number;
     endFrame: number;
+    expectedSourceText?: string;
+    expectedChinese?: string[];
   }[];
   audioEndFrame: number;
 };
@@ -117,16 +126,52 @@ export async function loadAudioFixtureBundle(
         "before-silence,silence,after-silence" ||
       stages.map(({ kind }) => kind).join(",") !== "speech,silence,speech" ||
       stages.some(
-        ({ startFrame, endFrame }) =>
+        ({ startFrame, endFrame }, index) =>
           !Number.isSafeInteger(startFrame) ||
           !Number.isSafeInteger(endFrame) ||
           startFrame < 1 ||
           endFrame < startFrame ||
-          endFrame > fixture.audioEndFrame,
-      )
+          endFrame > fixture.audioEndFrame ||
+          (index > 0 && startFrame <= stages[index - 1]!.endFrame),
+      ) ||
+      stages.some(({ kind, expectedSourceText, expectedChinese }) =>
+        kind === "speech"
+          ? !expectedSourceText?.trim() ||
+            !expectedChinese?.length ||
+            expectedChinese.some((text) => !text.trim())
+          : expectedSourceText !== undefined || expectedChinese !== undefined,
+      ) ||
+      new Set(
+        stages.flatMap(({ expectedChinese = [] }) => expectedChinese.map((text) => text.trim())),
+      ).size !== stages.flatMap(({ expectedChinese = [] }) => expectedChinese).length
     ) {
-      throw new Error("IQA-003 fixture requires explicit three-stage boundaries");
+      throw new Error("IQA-003 fixture requires explicit, distinct three-stage semantics");
     }
+  }
+  const iqa001Fixtures = manifest.scenarios["IQA-001"].map(
+    (id) => manifest.fixtures.find((fixture) => fixture.id === id)!,
+  );
+  if (
+    iqa001Fixtures.length !== 1 ||
+    iqa001Fixtures.some(({ continuousContent, contentSegments, audioEndFrame }) => {
+      if (!continuousContent || !contentSegments || contentSegments.length < 2) return true;
+      return contentSegments.some(
+        ({ id, startFrame, endFrame, expectedSourceText, expectedChinese }, index) =>
+          !id.trim() ||
+          !expectedSourceText.trim() ||
+          expectedChinese.length === 0 ||
+          expectedChinese.some((text) => !text.trim()) ||
+          startFrame < 1 ||
+          endFrame < startFrame ||
+          endFrame > audioEndFrame ||
+          (index > 0 && startFrame <= contentSegments[index - 1]!.endFrame),
+      );
+    })
+  ) {
+    throw new Error("IQA-001 requires one continuous fixture with at least two content segments");
+  }
+  if (manifest.scenarios["IQA-003"].length !== 1) {
+    throw new Error("IQA-003 requires one continuous three-stage fixture");
   }
   return manifest;
 }
