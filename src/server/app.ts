@@ -17,6 +17,7 @@ export type AppDependencies = {
   health?: HealthState;
   lifecycle?: LifecycleController;
   appOrigin?: string;
+  candidateIdentity?: Readonly<{ deliveryId: string; candidateSha: string }>;
 };
 
 export function createApp(dependencies: AppDependencies): FastifyInstance {
@@ -47,6 +48,10 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     const result = health.status();
     return reply.code(result.statusCode).send(result.body);
   });
+
+  if (dependencies.candidateIdentity) {
+    app.get("/candidate-identity", async () => dependencies.candidateIdentity);
+  }
 
   app.register(async (scope) => {
     await registerTranslationWebSocket(scope, dependencies.appOrigin);

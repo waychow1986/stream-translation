@@ -29,6 +29,10 @@ export function createProductionDependencies(config: ServerConfig): AppDependenc
         ...(config.azureClientId ? { azureClientId: config.azureClientId } : {}),
       }),
     appOrigin: config.appOrigin,
+    candidateIdentity: {
+      deliveryId: config.deliveryId,
+      candidateSha: config.candidateSha,
+    },
   };
 }
 

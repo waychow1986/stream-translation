@@ -6,6 +6,8 @@ export type ServerConfig = Readonly<{
   foundryEndpoint: string;
   foundryDeployment: string;
   foundryApiVersion: string;
+  deliveryId: string;
+  candidateSha: string;
   azureClientId?: string;
 }>;
 
@@ -49,6 +51,10 @@ export function parseServerConfig(environment: NodeJS.ProcessEnv): ServerConfig 
   }
 
   const appOrigin = httpsUrl(environment, "APP_ORIGIN");
+  const candidateSha = required(environment, "AIDELIVERY_CANDIDATE_SHA");
+  if (!/^[0-9a-f]{40}$/i.test(candidateSha)) {
+    throw new Error("AIDELIVERY_CANDIDATE_SHA must be a 40-character commit SHA");
+  }
   const config: ServerConfig = {
     port,
     appOrigin: appOrigin.endsWith("/") ? appOrigin.slice(0, -1) : appOrigin,
@@ -57,6 +63,8 @@ export function parseServerConfig(environment: NodeJS.ProcessEnv): ServerConfig 
     foundryEndpoint: httpsUrl(environment, "AZURE_FOUNDRY_ENDPOINT"),
     foundryDeployment: required(environment, "AZURE_FOUNDRY_DEPLOYMENT"),
     foundryApiVersion: required(environment, "AZURE_FOUNDRY_API_VERSION"),
+    deliveryId: required(environment, "AIDELIVERY_DELIVERY_ID"),
+    candidateSha,
     ...(environment.AZURE_CLIENT_ID?.trim()
       ? { azureClientId: environment.AZURE_CLIENT_ID.trim() }
       : {}),
