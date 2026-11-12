@@ -7,8 +7,25 @@ import type { IqaEvidence } from "./iqa-evidence";
 
 export type CandidateIdentity = { deliveryId: string; candidateSha: string };
 
+export function assertRemoteCandidateUrl(baseUrl: string): URL {
+  const url = new URL(baseUrl);
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1" ||
+    url.hostname === "::1"
+  ) {
+    throw new Error("remote Candidate URL must be a credential-free HTTPS deployment target");
+  }
+  return url;
+}
+
 export async function readCandidateIdentity(baseUrl: string): Promise<CandidateIdentity> {
-  const response = await fetch(new URL("/candidate-identity", baseUrl));
+  const response = await fetch(new URL("/candidate-identity", assertRemoteCandidateUrl(baseUrl)));
   if (!response.ok) throw new Error("candidate identity endpoint failed");
   const value = (await response.json()) as Partial<CandidateIdentity>;
   if (!value.deliveryId || !value.candidateSha) throw new Error("candidate identity is incomplete");
@@ -16,7 +33,7 @@ export async function readCandidateIdentity(baseUrl: string): Promise<CandidateI
 }
 
 export function candidateWebSocketUrl(baseUrl: string): string {
-  const url = new URL("/ws/v1/translate", baseUrl);
+  const url = new URL("/ws/v1/translate", assertRemoteCandidateUrl(baseUrl));
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
 }

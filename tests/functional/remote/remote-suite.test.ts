@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { assertIqaEvidence } from "../support/iqa-evidence";
+import { assertRemoteCandidateUrl } from "../support/remote-candidate";
 
 describe("remote IQA suite readiness", () => {
   it("rejects incomplete evidence before it can be reported", () => {
@@ -35,5 +36,14 @@ describe("remote IQA suite readiness", () => {
         ],
       }),
     ).not.toThrow();
+  });
+
+  it("rejects local synthetic and credential-bearing targets before network access", () => {
+    expect(() => assertRemoteCandidateUrl("http://127.0.0.1:3000")).toThrow("HTTPS deployment");
+    const userInfoTarget = ["https://user", "candidate.example.test"].join("@");
+    expect(() => assertRemoteCandidateUrl(userInfoTarget)).toThrow("HTTPS deployment");
+    expect(assertRemoteCandidateUrl("https://candidate.example.test").hostname).toBe(
+      "candidate.example.test",
+    );
   });
 });
