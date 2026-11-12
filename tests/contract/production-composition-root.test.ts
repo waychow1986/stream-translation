@@ -13,6 +13,8 @@ describe("production composition root", () => {
       foundryEndpoint: "https://foundry.example.test/",
       foundryDeployment: "translation",
       foundryApiVersion: "2026-01-01",
+      deliveryId: "DLV-test",
+      candidateSha: "a".repeat(40),
     });
 
     expect(dependencies.createSpeechAdapter?.().constructor.name).toBe("AzureSpeechAdapter");
@@ -20,6 +22,40 @@ describe("production composition root", () => {
       "FoundryTranslationAdapter",
     );
     expect(JSON.stringify(dependencies)).not.toContain("Synthetic");
+  });
+
+  it("exposes immutable Candidate identity separately from readiness", async () => {
+    const app = (
+      await startServer({
+        dependencies: {
+          speechAdapter: {
+            start: vi.fn(async () => undefined),
+            write: vi.fn(async () => undefined),
+            end: vi.fn(async () => undefined),
+            close: vi.fn(async () => undefined),
+          },
+          translationAdapter: {
+            translate: vi.fn(async () => ""),
+            cancel: vi.fn(async () => undefined),
+          },
+          candidateIdentity: {
+            deliveryId: "DLV-test",
+            candidateSha: "a".repeat(40),
+          },
+          clientRoot: false,
+        },
+        port: 0,
+        installSignalHandlers: false,
+      })
+    ).app;
+
+    const response = await app.inject({ method: "GET", url: "/candidate-identity" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      deliveryId: "DLV-test",
+      candidateSha: "a".repeat(40),
+    });
+    await app.close();
   });
 
   it("closes already-created resources when application startup fails", async () => {

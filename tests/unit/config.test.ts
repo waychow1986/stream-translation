@@ -10,6 +10,8 @@ const validEnvironment = {
   AZURE_FOUNDRY_ENDPOINT: "https://foundry.example",
   AZURE_FOUNDRY_DEPLOYMENT: "translation",
   AZURE_FOUNDRY_API_VERSION: "2026-01-01",
+  AIDELIVERY_DELIVERY_ID: "DLV-test",
+  AIDELIVERY_CANDIDATE_SHA: "a".repeat(40),
 };
 
 describe("server configuration", () => {
@@ -23,11 +25,20 @@ describe("server configuration", () => {
       foundryEndpoint: "https://foundry.example/",
       foundryDeployment: "translation",
       foundryApiVersion: "2026-01-01",
+      deliveryId: "DLV-test",
+      candidateSha: "a".repeat(40),
     });
     expect(JSON.stringify(config)).not.toContain("not-read");
   });
 
-  it.each(["PORT", "APP_ORIGIN", "AZURE_SPEECH_ENDPOINT", "AZURE_FOUNDRY_DEPLOYMENT"])(
+  it.each([
+    "PORT",
+    "APP_ORIGIN",
+    "AZURE_SPEECH_ENDPOINT",
+    "AZURE_FOUNDRY_DEPLOYMENT",
+    "AIDELIVERY_DELIVERY_ID",
+    "AIDELIVERY_CANDIDATE_SHA",
+  ])(
     "rejects a missing %s",
     (key) => {
       const environment = { ...validEnvironment };
@@ -35,6 +46,12 @@ describe("server configuration", () => {
       expect(() => parseServerConfig(environment)).toThrow(key);
     },
   );
+
+  it("rejects an invalid immutable Candidate SHA", () => {
+    expect(() =>
+      parseServerConfig({ ...validEnvironment, AIDELIVERY_CANDIDATE_SHA: "not-a-sha" }),
+    ).toThrow("AIDELIVERY_CANDIDATE_SHA");
+  });
 
   it("rejects duplicate and malformed candidate locales", () => {
     expect(() =>

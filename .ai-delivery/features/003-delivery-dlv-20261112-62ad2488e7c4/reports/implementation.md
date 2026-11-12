@@ -424,3 +424,71 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T038，使 US1 阶段闭合；静态分析、build、unit、local contract/integration、local functional、remote-test readiness、AudioWorklet 语法、依赖安全、格式与路径/secret 检查均取得真实通过结果。真实 Azure、Independent QA 和下游平台证据如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
+
+## Coding Session coding-attempt-01-batch-07-operation-020
+
+### 实施范围
+
+本 Session 按依赖顺序完成 Polish 阶段 T039 至 T042，共 4 项任务。新增非 root 多阶段 Node.js 22 production image、active Feature deployment contract、部署后 developer functional test 入口和匿名 Candidate identity endpoint；重放 remote suite 就绪边界、全部声明的本地验证命令、production composition root、image 内 synthetic WebSocket 功能行为及 SIGTERM drain/timeout cancellation。未访问 Azure、远程部署环境或 Independent QA target。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `Dockerfile`、`.dockerignore` | 构建并裁剪 production dependencies，以 `node` 用户运行正常 `dist/server/index.js`，排除测试、环境文件和 Delivery 制品 | T039 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/deployment.json` | 声明 port、readiness、Candidate identity、WebSocket、managed identity、配置引用、grace period、setup 和分类 validation commands | T040 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/developer-functional-run.sh` | 校验不可变 Candidate identity 并在显式平台输入下执行 IQA-001 至 IQA-003 remote suite，按 runtime contract 写结果 | T040 |
+| `src/server/config.ts`、`src/server/app.ts`、`src/server/index.ts` | 校验平台注入的 Delivery/Candidate identity，并提供与 readiness 分离的匿名 `/candidate-identity` | T040、T042 |
+| `tests/unit/config.test.ts`、`tests/contract/production-composition-root.test.ts` | 先验证 Candidate identity 配置、非法 SHA 拒绝和 endpoint contract | T040、T042 |
+| `tests/functional/support/image-candidate-server.mjs` | 通过 image 内 `startServer` 运行只读挂载的 test-only adapter harness，并启用真实 lifecycle signal 路径 | T042 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/tasks-implementation.md` | 仅将已取得完成证据的 T039 至 T042 checkbox 更新为完成 | T039-T042 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| Production candidate 治理 / TD-007 | `Dockerfile`、`.dockerignore` | production image build、用户/CMD、image 内容、`/healthz`、Web app 与 Candidate identity 检查 | 通过；image 为非 root，正常 production 入口退出码 0 |
+| IQA-001 / AC-003 辅助行为 | image 内 `dist/server/index.js` | 只读挂载 `tests/functional/support/image-candidate-server.mjs` 后发送两帧虚拟音频 | 通过；得到有序 final 字幕 `1:第一`、`2:第二` |
+| IQA-002 / AC-001 / AC-002 remote readiness | `tests/functional/remote/iqa-002.spec.ts`、developer functional script | `npm run test:remote`、Candidate identity contract | 通过测试发现与默认 skip；真实 Azure 结果延后 |
+| IQA-003 / AC-004 辅助行为 | lifecycle-enabled image test harness | local functional suite、image SIGTERM drain harness | 通过；shutdown health 为 503，记录 drain、Speech cancellation 与 Translation cancellation |
+| IQA-001 至 IQA-003 输入与证据边界 | fixture bundle、remote suite 与 evidence schema | 定向 Vitest 与 `npm run test:remote` | 5 项定向断言及 3 项 remote-readiness 断言通过；3 个远程场景明确 skip 且未联网 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 首次 focused `npm test` | 尚未执行 setup 的 workspace | 失败，退出码 127 | `vitest: not found`；随后先执行声明的 `npm ci` 并重放通过 |
+| `npm ci` | Node.js 22 Coding workspace、无 Azure 配置 | 通过，退出码 0 | 安装锁定的 270 个 package，audit 为 0 个漏洞 |
+| focused config / composition tests | 本地 Vitest | 通过，退出码 0 | 2 个 file、12 项断言通过 |
+| fixture bundle 与 remote evidence 定向测试；`npm run test:remote` | 本地、无远程输入 | 通过，退出码 0 | 定向 5 项断言通过；remote suite 3 项断言通过，3 个 Playwright 远程场景明确 skip |
+| deployment contract 声明的 `npm ci`、`npm run staticAnalysis`、`npm run build`、`npm test`、`npm run test:contract`、`npm run test:functional`、`npm run test:remote` | 本地 clean setup、无 Azure 配置 | 全部通过，退出码 0 | TypeScript/ESLint 通过；17 个 Vitest file、53 项断言通过且 9 skip；contract 12 项通过且 2 skip；local functional 4 项通过且 3 remote skip |
+| `docker build --pull --tag stream-translation:coding-batch-07 .` | Docker 28、无 Azure 配置 | 通过，退出码 0 | image ID `sha256:e96da3669664bf4460b4ebf9e954a7c75861f142cc5c9ab05f3710bbb4134019`；仅为本地证据，不是发布 digest |
+| production image 正常命令、用户/CMD、HTTP endpoint 检查 | 无 secret 的占位 HTTPS endpoint 与合法非生产配置，未建立翻译会话 | 通过，退出码 0 | `node` 用户；CMD 为 `node dist/server/index.js`；`/healthz`、`/`、`/candidate-identity` 通过；容器正常停止 |
+| image 内 test-only WebSocket harness | 只读挂载 harness、synthetic adapters | 通过，退出码 0 | 虚拟音频经过 image 内 Candidate Fastify/WebSocket；有序字幕为 `1:第一`、`2:第二` |
+| image SIGTERM 在途 drain/timeout harness | image 内 test-only adapters、500 ms grace | 通过，退出码 0 | shutdown 期间 `/healthz` 为 503；stdout 顺序包含 `speech.draining`、`translation.cancelled`、`speech.cancelled`；容器退出码 0 |
+| `npm audit --audit-level=moderate`、runtime JSON/script 检查、image 内容检查 | 锁定依赖、production image | 通过，退出码 0 | 0 个漏洞；分类命令非空；缺少平台输入时 functional script 在联网前失败；image 不含 tests、`.ai-delivery` 或 `.env` |
+
+### Runtime 与下游门禁就绪制品
+
+- production image 监听 3000，以非 root 用户运行真实 Azure adapter composition root，并分别提供 `/healthz`、`/candidate-identity`、`/ws/v1/translate` 和 Web app。
+- active Feature `runtime/deployment.json` 已声明幂等 setup、四类本地 validation commands、managed identity、非秘密配置、无 repository secret 引用、termination grace 及不可变 Candidate 关联输入。
+- `runtime/developer-functional-run.sh` 仅在平台提供 Delivery ID、Candidate SHA、remote base URL、外部 fixture manifest 和完整 candidate locale 集合后执行；先核对 deployed identity，再运行真实 remote IQA suite，任一失败均非零退出。
+- IQA-001 至 IQA-003 的测试发现、fixture 完整性、证据 schema 和默认无网络边界已通过；真实环境入口保持可执行。
+
+### 延后平台证据
+
+- 真实 Azure Speech continuous LID、完整候选语言交集逐语言结果、Foundry deployment 的 reasoning-off streaming contract、managed identity/RBAC、外部音频 fixture 与 IQA-001 至 IQA-003 结果必须由已部署精确 Candidate 上的 Independent QA 产生。
+- 最终 Candidate commit SHA、registry image digest、Container Apps target、平台注入配置、developer functional 结果文件、CI、UAT、发布审批、Review 与 Merge 证据尚未产生。
+- 本地 image ID、占位 HTTPS endpoint、synthetic 字幕和 health 结果仅为 Coding 辅助证据，不替代真实外部 integration 或产品验收。
+
+### 限制、剩余风险与阻塞项
+
+- Coding 环境没有 Azure endpoint、credential、managed identity、批准外部音频 fixture 或 deployed URL，因此未执行也未声称 Azure integration 或 Independent QA 通过。
+- `node:22-bookworm-slim` 本次解析的 base digest 已记录在本地 build 输出；发布平台仍须基于精确 Candidate 重建并记录其不可变 image digest。
+- 远程 functional script 的成功路径必须等待平台输入；本 Session 仅验证语法、输入失败边界、Candidate identity contract 和其调用的 remote suite readiness。
+- 未发现阻塞下游 Convergence、CI 和 Independent QA 的 Coding 问题。
+
+### 实施结论
+
+完成：本 Session 已完成且仅完成 T039 至 T042，Polish 阶段及全部 42 项 Coding 任务已闭合。声明的 mandatory local validation、OCI build/运行、image functional/lifecycle、remote-test readiness、依赖安全、runtime contract 和 image 内容检查均取得真实通过结果；真实 Azure、Independent QA 和后续平台证据如实延后。按 `coding-continuation` 退出约束停止，不部署、不审批、不合并。
