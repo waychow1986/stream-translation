@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -20,21 +20,39 @@ describe.skipIf(!enabled)("Azure Speech remote contract", () => {
     }
     const manifest = await loadAudioFixtureBundle(manifestPath, locales);
     const observed = new Set<string>();
-
-    for (const fixture of manifest.fixtures) {
-      const adapter = new AzureSpeechAdapter({
-        endpoint,
-        candidateLocales: locales,
-        azureClientId: process.env.AZURE_CLIENT_ID,
-      });
-      await adapter.start((segment) => observed.add(segment.sourceLanguage), () => undefined);
+    const adapter = new AzureSpeechAdapter({
+      endpoint,
+      candidateLocales: locales,
+      azureClientId: process.env.AZURE_CLIENT_ID,
+    });
+    await adapter.start((segment) => observed.add(segment.sourceLanguage), () => undefined);
+    try {
+      for (const fixture of manifest.fixtures) {
       const audio = await readFile(resolve(dirname(manifestPath), fixture.path));
       for (let offset = 0; offset < audio.length; offset += 640) {
         await adapter.write(audio.subarray(offset, offset + 640));
+        await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+      }
       }
       await adapter.end();
+    } finally {
       await adapter.close();
     }
     expect([...observed].sort()).toEqual([...locales].sort());
+    const evidenceDirectory = process.env.AIDELIVERY_CONTRACT_EVIDENCE_DIRECTORY;
+    if (!evidenceDirectory) throw new Error("contract evidence directory is required");
+    await mkdir(evidenceDirectory, { recursive: true });
+    await writeFile(
+      join(evidenceDirectory, "azure-speech.json"),
+      `${JSON.stringify({
+        contract: "Azure Speech continuous LID",
+        passed: true,
+        audioFormat: "pcm_s16le/16000/16/mono",
+        sessionCount: 1,
+        candidateLocales: locales,
+        observedLocales: [...observed].sort(),
+      })}\n`,
+      "utf8",
+    );
   });
 });

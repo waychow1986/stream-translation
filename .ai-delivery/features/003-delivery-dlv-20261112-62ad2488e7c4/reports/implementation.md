@@ -492,3 +492,75 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T039 至 T042，Polish 阶段及全部 42 项 Coding 任务已闭合。声明的 mandatory local validation、OCI build/运行、image functional/lifecycle、remote-test readiness、依赖安全、runtime contract 和 image 内容检查均取得真实通过结果；真实 Azure、Independent QA 和后续平台证据如实延后。按 `coding-continuation` 退出约束停止，不部署、不审批、不合并。
+
+## Coding Session coding-attempt-02-batch-08-operation-022
+
+### 实施范围
+
+本 Session 以 `coding-repair` 模式定向修复 Convergence 的 CONV-001 至 CONV-004，沿用已批准 T020、T021、T023、T029-T032、T038、T040-T042，不改写任务文本或 checkbox。先补充 fixture/evidence 失败断言，再闭合真实 Speech/Foundry contract 入口、IQA 语义与三阶段证据、实际浏览器 `App`—麦克风—AudioWorklet—WebSocket—`SubtitleView` 链路，以及 developer functional 逐场景证据保全。未修改产品行为、生产应用、Technical Solution、平台 workflow 或其他 Feature。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/contract/azure-speech.remote.test.ts` | 在单一 continuous LID session 中按 20 ms 节奏发送完整 fixture 集合，验证全部候选 locale，并输出非敏感 contract 证据 | T021、T041 |
+| `tests/contract/foundry-translation.remote.test.ts` | 实际实例化 managed-identity Foundry adapter，调用 deployment 并验证 reasoning-off adapter 约束、流式 partial 与中文输出，输出 contract 证据 | T029、T041 |
+| `tests/functional/fixtures/manifest.schema.json`、`manifest.example.json`、`tests/functional/support/audio-fixture-bundle.ts`、`audio-fixture-bundle.test.ts` | 增加输入含义、预期中文和 IQA-003 明确“语音—静音—语音”边界 contract 及联网前正反例 | T020、T041 |
+| `tests/functional/support/iqa-evidence.ts`、`remote-candidate.ts` | 通过真实 Candidate Web app、浏览器 fake media、实际 AudioWorklet 与 UI 执行远程场景；记录 fixture 语义、实际音频帧、`audio.end`、阶段、server sequence/ordinal、locale、字幕和对应结果，并写入逐场景 JSON | T023、T031、T032 |
+| `tests/functional/remote/iqa-001.spec.ts`、`iqa-002.spec.ts`、`iqa-003.spec.ts`、`remote-suite.test.ts` | 分别断言结束前有序字幕、完整 locale 与中文对应、静音无虚构输出和后段恢复，并验证增强 evidence schema | T023、T031、T032、T041 |
+| `tests/functional/streaming-subtitles.spec.ts` | 以 Playwright 实际加载 React Web app，通过 fake microphone 驱动 AudioWorklet，验证 `SubtitleView` 中结束前有序中文字幕 | T030、T038 |
+| `package.json` | 增加真实 Azure contract 的显式 remote 命令 | T032、T041 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/deployment.json` | clean runner setup 显式安装锁定 Playwright 对应 Chromium，不依赖预热 browser cache | T040、T042 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/developer-functional-run.sh` | 先核对 Candidate identity，再执行两项真实 Azure contract 与三个 remote IQA；校验实际 JSON 后原样嵌入平台结果，不再生成固定成功摘要 | T040-T042 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| Azure Speech / Foundry 真实 contract | 两个 production adapter 的既有实现 | `tests/contract/azure-speech.remote.test.ts`、`foundry-translation.remote.test.ts`、developer functional script | 本地发现且无配置时明确 skip；下游入口现会实际调用服务并保存两项结构化证据 |
+| IQA-001 / AC-002 / AC-003 | Candidate Web app、AudioWorklet、WebSocket、SubtitleView | `streaming-subtitles.spec.ts`、`remote/iqa-001.spec.ts` | 本地真实浏览器链路通过；远程入口按实际帧与 `audio.end` 断言多次有序中文输出 |
+| IQA-002 / AC-001 / AC-002 | 未提供源语言的浏览器链路 | `remote/iqa-002.spec.ts` | 完整候选 locale 与 fixture 预期中文逐项断言入口闭合；真实 Azure 结果延后 |
+| IQA-003 / AC-004 | 明确三阶段 fixture 与浏览器观察 | `remote/iqa-003.spec.ts`、fixture contract tests | 静音阶段零字幕、后段恢复及中文对应的独立判定入口闭合；真实 Azure 结果延后 |
+| IQA 必需证据 / CONV-004 | developer functional result | `remote-suite.test.ts`、shell/JSON 定向检查 | 每个场景保存 Candidate、target、fixture hash/语义、输入阶段、结束边界、sequence/ordinal、locale 与字幕，不再伪造固定结果 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 初始 focused Vitest | 本地、实现前 | 预期失败，退出码 1 | 新增的 fixture 语义/三阶段与 evidence 完整性断言各 1 项失败，证明修复前缺口 |
+| `npm ci`、`npx playwright install chromium` | Node.js 22 Coding workspace、仓库外 Playwright cache | 通过，退出码 0 | 安装锁定的 270 个 package 和对应 Chromium/FFmpeg；生成物未进入仓库 |
+| 首次 `npm run test:functional` | 尚未重建 `dist/server` | 失败，退出码 1 | 既有 image lifecycle 场景报告缺少 `dist/server/index.js`；随后按声明顺序先 build 再重放通过 |
+| 中间 `npm test` / `npm run staticAnalysis` | Playwright 场景首次改为直接顶层声明后 | 失败，退出码 1/2 | Vitest 拒绝 Playwright `test()`；改为 Vitest 发现时明确 skip、Playwright 执行时动态声明后重放通过 |
+| `npm run staticAnalysis` | 本地、无 Azure 配置 | 通过，退出码 0 | TypeScript 与 ESLint 均通过 |
+| `npm run build` | 本地 production build | 通过，退出码 0 | client、AudioWorklet asset 与 `dist/server/index.js` 构建成功 |
+| `npm test` | 本地 Vitest、无网络 | 通过，退出码 0 | 17 个 test file、54 项断言通过；9 个 Playwright/真实远程入口明确 skip |
+| `npm run test:contract` | 本地 contract suite、无 Azure 配置 | 通过，退出码 0 | 5 个 local file、12 项断言通过；2 个真实 Azure contract 明确 skip |
+| `npm run test:functional` | 本地 Playwright、已 build | 通过，退出码 0 | 4 项 local functional 通过；其中 streaming 场景实际执行 Web app、fake microphone、AudioWorklet、WebSocket 与 SubtitleView；3 项 remote IQA 明确 skip |
+| `npm run test:remote` | 本地 readiness、无远程输入 | 通过，退出码 0 | 4 项 evidence/readiness 断言通过；3 项 remote IQA 明确 skip，未访问远程服务 |
+| runtime shell/JSON、缺失输入失败边界 | 本地 Bash/jq | 通过，退出码 0 | shell 与 JSON 语法有效；缺少 Candidate SHA 时在联网前非零失败 |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `git diff --check c16ad97c638ca3eaa5e07444c8e24134d40439d8`、路径与 credential pattern scan | immutable Session base 最终 diff | 通过，退出码 0 | 所有变更均在批准 manifest；无 whitespace error、私钥或 credential value |
+
+### Runtime 与下游门禁就绪制品
+
+- clean runner 先执行 `npm ci` 和显式 Chromium 安装，再按既有分类运行 static analysis、build、developer tests 与 functional tests。
+- developer functional 先验证部署 Candidate identity，再以 managed identity 实际执行单会话 Speech continuous LID contract 和 Foundry reasoning-off streaming contract，随后由真实浏览器逐项执行 IQA-001 至 IQA-003。
+- 每个 IQA evidence JSON 包含 Candidate identity、target、fixture hash、输入源含义与预期中文、实际 AudioWorklet 帧边界、`audio.end`、阶段字幕计数、server sequence/ordinal、locale、中文字幕及语义匹配结果；脚本逐项校验后才写 `passed: true`。
+- 本地 browser functional 已真实经过用户页面和 AudioWorklet；远程 helper 使用平台 Candidate 页面和外部批准 fixture，不引入 test-only production switch。
+
+### 延后平台证据
+
+- Coding 环境按 Constitution 未访问 Azure 或远程部署。真实 Speech/Foundry managed identity、RBAC、target deployment contract、完整候选 locale、IQA-001 至 IQA-003 结构化结果仍由平台在部署后的精确 Candidate 上产生。
+- 最终 integrated Candidate SHA、image digest、deployment target、CI、Independent QA、UAT、发布审批、Review 与 Merge 证据尚未产生。
+- 本 Session 的 synthetic browser 链路、测试发现、默认 skip、schema 和脚本校验只证明下游入口就绪，不替代真实 Azure 验收。
+
+### 限制、剩余风险与阻塞项
+
+- 真实服务可能暴露 deployment 不支持 reasoning-off、continuous LID locale 差异、RBAC、网络或 fixture 语义不匹配；修复后的入口会以非零状态和保全证据报告，而不会生成固定成功结果。
+- 远程浏览器阶段归因使用实际 outbound `audio.chunk` 帧计数，仍依赖 Independent QA fixture 的阶段边界准确且音频足以在对应窗口形成可观察 final 字幕。
+- 未修改 production 应用行为、任务账本或已批准上游制品；未发现需要范围申请的新路径。
+
+### 实施结论
+
+完成：CONV-001 至 CONV-004 对应的既有任务实现缺口已定向修复。声明的 static analysis、build、developer tests、local contract、local browser functional、remote readiness、runtime syntax/failure boundary、依赖安全、immutable-base 路径和 credential scan 均取得当前 Session 的真实通过结果；真实 Azure 与部署后 IQA 结果如实延后。按 `coding-repair` 退出约束停止，不部署、不审批、不合并。

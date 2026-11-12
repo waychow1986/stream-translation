@@ -1,7 +1,9 @@
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
-import { AUDIO_FORMAT, PROTOCOL_VERSION, WEBSOCKET_SUBPROTOCOL } from "../../../src/shared/protocol";
+import { chromium } from "@playwright/test";
+
 import type { AudioFixture, AudioFixtureManifest } from "./audio-fixture-bundle";
 import type { IqaEvidence } from "./iqa-evidence";
 
@@ -32,22 +34,37 @@ export async function readCandidateIdentity(baseUrl: string): Promise<CandidateI
   return { deliveryId: value.deliveryId, candidateSha: value.candidateSha };
 }
 
-export function candidateWebSocketUrl(baseUrl: string): string {
-  const url = new URL("/ws/v1/translate", assertRemoteCandidateUrl(baseUrl));
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.toString();
+function waveFile(pcm: Buffer): Buffer {
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write("WAVEfmt ", 8);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(16_000, 24);
+  header.writeUInt32LE(32_000, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
 }
 
-export function openCandidateSocket(baseUrl: string): WebSocket {
-  return new WebSocket(candidateWebSocketUrl(baseUrl), WEBSOCKET_SUBPROTOCOL);
+function stageAt(fixture: AudioFixture, frame: number): string {
+  return (
+    fixture.stages?.find(
+      ({ startFrame, endFrame }) => frame >= startFrame && frame <= endFrame,
+    )?.id ?? "content"
+  );
 }
 
 export async function runRemoteScenario(options: {
-  scenarioId: "IQA-001" | "IQA-003";
+  scenarioId: "IQA-001" | "IQA-002" | "IQA-003";
   baseUrl: string;
   manifestPath: string;
   manifest: AudioFixtureManifest;
-}): Promise<IqaEvidence & { observations: { inputFrame: number; beforeAudioEnd: boolean }[] }> {
+}): Promise<IqaEvidence> {
   const identity = await readCandidateIdentity(options.baseUrl);
   const fixtureIds = new Set(options.manifest.scenarios[options.scenarioId]);
   const fixtures = options.manifest.fixtures.filter(({ id }) => fixtureIds.has(id));
@@ -57,75 +74,124 @@ export async function runRemoteScenario(options: {
     candidate: identity,
     target: options.baseUrl,
     fixtureSha256: fixtures.map(({ sha256 }) => sha256).join(","),
+    fixtures: fixtures.map(({ id, locale, expectedSourceText, expectedChinese }) => ({
+      id,
+      locale,
+      expectedSourceText,
+      expectedChinese,
+    })),
+    audioEnds: [],
+    stages: [],
     events: [],
   };
-  const observations: { inputFrame: number; beforeAudioEnd: boolean }[] = [];
-
   for (const fixture of fixtures) {
-    await streamFixture(options.baseUrl, options.manifestPath, fixture, evidence, observations);
+    await runFixtureInBrowser(options.baseUrl, options.manifestPath, fixture, evidence);
   }
-  return { ...evidence, observations };
+  return evidence;
 }
 
-async function streamFixture(
+async function runFixtureInBrowser(
   baseUrl: string,
   manifestPath: string,
   fixture: AudioFixture,
   evidence: IqaEvidence,
-  observations: { inputFrame: number; beforeAudioEnd: boolean }[],
 ): Promise<void> {
-  const audio = await readFile(resolve(dirname(manifestPath), fixture.path));
-  const socket = openCandidateSocket(baseUrl);
-  await new Promise<void>((resolveOpen, reject) => {
-    socket.addEventListener("open", () => resolveOpen(), { once: true });
-    socket.addEventListener("error", () => reject(new Error("Candidate WebSocket failed")), {
-      once: true,
-    });
+  const pcm = await readFile(resolve(dirname(manifestPath), fixture.path));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "stream-translation-remote-"));
+  const wavePath = join(temporaryDirectory, `${fixture.id}.wav`);
+  await writeFile(wavePath, waveFile(pcm));
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+      `--use-file-for-fake-audio-capture=${wavePath}%noloop`,
+    ],
   });
+  const context = await browser.newContext();
+  await context.grantPermissions(["microphone"], {
+    origin: assertRemoteCandidateUrl(baseUrl).origin,
+  });
+  const page = await context.newPage();
   let inputFrame = 0;
   let audioEnded = false;
-  const ended = new Promise<void>((resolveEnd, reject) => {
-    socket.addEventListener("error", () => reject(new Error("Candidate WebSocket failed")));
-    socket.addEventListener("message", (event) => {
-      const message = JSON.parse(String(event.data)) as Record<string, unknown>;
-      if (message.type === "subtitle.final") {
-        evidence.events.push({
-          inputStage: `${fixture.id}:frame-${inputFrame}`,
-          serverSequence: Number(message.sequence),
-          ordinal: Number(message.ordinal),
-          locale: String(message.sourceLanguage),
-          subtitle: String(message.text),
+  page.on("websocket", (socket) => {
+    if (!socket.url().includes("/ws/v1/translate")) return;
+    socket.on("framesent", ({ payload }) => {
+      if (typeof payload !== "string") return;
+      const message = JSON.parse(payload) as Record<string, unknown>;
+      if (message.type === "audio.chunk") inputFrame += 1;
+      if (message.type === "audio.end") {
+        audioEnded = true;
+        evidence.audioEnds.push({
+          fixtureId: fixture.id,
+          frame: inputFrame,
+          sentAt: new Date().toISOString(),
         });
-        observations.push({ inputFrame, beforeAudioEnd: !audioEnded });
       }
-      if (message.type === "session.end") resolveEnd();
-      if (message.type === "protocol.error") reject(new Error("Candidate rejected fixture protocol"));
+    });
+    socket.on("framereceived", ({ payload }) => {
+      if (typeof payload !== "string") return;
+      const message = JSON.parse(payload) as Record<string, unknown>;
+      if (message.type !== "subtitle.final") return;
+      const observedFrame = Math.min(fixture.audioEndFrame, Math.max(1, inputFrame));
+      const subtitle = String(message.text);
+      evidence.events.push({
+        fixtureId: fixture.id,
+        inputStage: stageAt(fixture, observedFrame),
+        observedFrame,
+        beforeAudioEnd: !audioEnded,
+        serverSequence: Number(message.sequence),
+        ordinal: Number(message.ordinal),
+        locale: String(message.sourceLanguage),
+        subtitle,
+        expectedChineseMatched: fixture.expectedChinese.some(
+          (expected) => subtitle.includes(expected) || expected.includes(subtitle),
+        ),
+      });
     });
   });
-  socket.send(
-    JSON.stringify({
-      type: "session.start",
-      version: PROTOCOL_VERSION,
-      sequence: 1,
-      audio: AUDIO_FORMAT,
-    }),
-  );
-  let sequence = 2;
-  for (let offset = 0; offset < fixture.audioEndFrame * 640; offset += 640) {
-    inputFrame += 1;
-    socket.send(
-      JSON.stringify({
-        type: "audio.chunk",
-        version: PROTOCOL_VERSION,
-        sequence: sequence++,
-        byteLength: 640,
-      }),
-    );
-    socket.send(audio.subarray(offset, offset + 640));
-    await new Promise((resolveWait) => setTimeout(resolveWait, 0));
+  try {
+    await page.goto(baseUrl);
+    await page.getByRole("button", { name: "开始" }).click();
+    await page.getByRole("status").filter({ hasText: "正在翻译" }).waitFor();
+    const audioDeadline = Date.now() + Math.max(10_000, fixture.audioEndFrame * 40);
+    while (inputFrame < fixture.audioEndFrame && Date.now() < audioDeadline) {
+      await page.waitForTimeout(20);
+    }
+    if (inputFrame < fixture.audioEndFrame) {
+      throw new Error("browser did not stream the declared audio.end boundary");
+    }
+    await page.getByRole("button", { name: "停止" }).click();
+    await page.getByRole("status").filter({ hasText: "等待开始" }).waitFor();
+    if (!evidence.audioEnds.some(({ fixtureId }) => fixtureId === fixture.id)) {
+      throw new Error("browser did not send the audio.end boundary");
+    }
+    const fixtureEvents = evidence.events.filter(({ fixtureId }) => fixtureId === fixture.id);
+    for (const event of fixtureEvents) {
+      await page.getByRole("listitem").filter({ hasText: event.subtitle }).waitFor();
+    }
+    const stages = fixture.stages ?? [
+      {
+        id: "content",
+        startFrame: 1,
+        endFrame: fixture.audioEndFrame,
+      },
+    ];
+    for (const stage of stages) {
+      evidence.stages.push({
+        fixtureId: fixture.id,
+        id: stage.id,
+        startFrame: stage.startFrame,
+        endFrame: stage.endFrame,
+        subtitleCount: fixtureEvents.filter(
+          ({ observedFrame }) =>
+            observedFrame >= stage.startFrame && observedFrame <= stage.endFrame,
+        ).length,
+      });
+    }
+  } finally {
+    await browser.close();
+    await rm(temporaryDirectory, { recursive: true, force: true });
   }
-  audioEnded = true;
-  socket.send(JSON.stringify({ type: "audio.end", version: PROTOCOL_VERSION, sequence }));
-  await ended;
-  socket.close();
 }

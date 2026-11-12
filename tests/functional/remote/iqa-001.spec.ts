@@ -1,5 +1,5 @@
 import { loadAudioFixtureBundle } from "../support/audio-fixture-bundle";
-import { assertIqaEvidence } from "../support/iqa-evidence";
+import { assertIqaEvidence, persistIqaEvidence } from "../support/iqa-evidence";
 import { runRemoteScenario } from "../support/remote-candidate";
 
 async function validateInputs() {
@@ -36,9 +36,11 @@ if (process.env.VITEST) {
     });
     assertIqaEvidence(evidence);
     expect(evidence.events.length).toBeGreaterThanOrEqual(2);
+    expect(evidence.events.every(({ expectedChineseMatched }) => expectedChineseMatched)).toBe(true);
     expect(evidence.events.map(({ ordinal }) => ordinal)).toEqual(
       [...evidence.events.map(({ ordinal }) => ordinal)].sort((left, right) => left - right),
     );
-    expect(evidence.observations.some(({ beforeAudioEnd }) => beforeAudioEnd)).toBe(true);
+    expect(evidence.events.some(({ beforeAudioEnd }) => beforeAudioEnd)).toBe(true);
+    await persistIqaEvidence(evidence);
   });
 }
