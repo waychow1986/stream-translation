@@ -27,6 +27,26 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "continuousContent": { "type": "boolean" },
+          "contentSegments": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "startFrame", "endFrame", "expectedSourceText", "expectedChinese"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "startFrame": { "type": "integer", "minimum": 1 },
+                "endFrame": { "type": "integer", "minimum": 1 },
+                "expectedSourceText": { "type": "string", "minLength": 1 },
+                "expectedChinese": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          },
           "silenceIntervals": {
             "type": "array",
             "items": {
@@ -45,23 +65,35 @@
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "kind", "startFrame", "endFrame"],
+                "required": ["id", "kind", "startFrame", "endFrame", "expectedSourceText", "expectedChinese"],
                 "properties": {
                   "id": { "const": "before-silence" },
                   "kind": { "const": "speech" },
                   "startFrame": { "type": "integer", "minimum": 1 },
-                  "endFrame": { "type": "integer", "minimum": 1 }
+                  "endFrame": { "type": "integer", "minimum": 1 },
+                  "expectedSourceText": { "type": "string", "minLength": 1 },
+                  "expectedChinese": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "minLength": 1 }
+                  }
                 }
               },
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "kind", "startFrame", "endFrame"],
+                "required": ["id", "kind", "startFrame", "endFrame", "expectedSourceText", "expectedChinese"],
                 "properties": {
                   "id": { "const": "silence" },
                   "kind": { "const": "silence" },
                   "startFrame": { "type": "integer", "minimum": 1 },
-                  "endFrame": { "type": "integer", "minimum": 1 }
+                  "endFrame": { "type": "integer", "minimum": 1 },
+                  "expectedSourceText": { "type": "string", "minLength": 1 },
+                  "expectedChinese": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "minLength": 1 }
+                  }
                 }
               },
               {

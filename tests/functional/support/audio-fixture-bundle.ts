@@ -10,12 +10,21 @@ export type AudioFixture = {
   expectedSourceText: string;
   expectedChinese: string[];
   continuousContent: boolean;
+  contentSegments?: {
+    id: string;
+    startFrame: number;
+    endFrame: number;
+    expectedSourceText: string;
+    expectedChinese: string[];
+  }[];
   silenceIntervals?: { startFrame: number; endFrame: number }[];
   stages?: {
     id: "before-silence" | "silence" | "after-silence";
     kind: "speech" | "silence";
     startFrame: number;
     endFrame: number;
+    expectedSourceText?: string;
+    expectedChinese?: string[];
   }[];
   audioEndFrame: number;
 };
@@ -34,6 +43,16 @@ export type AudioFixtureManifest = {
 
 const LOCALE = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?-[A-Z]{2}$|^[a-z]{2,3}-[A-Z]{2}$/;
 const HASH = /^[a-f0-9]{64}$/;
+
+function hasAmbiguousExpectedChinese(groups: readonly (readonly string[])[]): boolean {
+  const values = groups.flatMap((group) => group.map((value) => value.trim()));
+  return values.some((value, index) =>
+    values.some(
+      (candidate, candidateIndex) =>
+        index !== candidateIndex && (value.includes(candidate) || candidate.includes(value)),
+    ),
+  );
+}
 
 function assertManifest(value: unknown): asserts value is AudioFixtureManifest {
   if (!value || typeof value !== "object") throw new Error("fixture manifest must be an object");
@@ -117,16 +136,56 @@ export async function loadAudioFixtureBundle(
         "before-silence,silence,after-silence" ||
       stages.map(({ kind }) => kind).join(",") !== "speech,silence,speech" ||
       stages.some(
-        ({ startFrame, endFrame }) =>
+        ({ startFrame, endFrame }, index) =>
           !Number.isSafeInteger(startFrame) ||
           !Number.isSafeInteger(endFrame) ||
           startFrame < 1 ||
           endFrame < startFrame ||
-          endFrame > fixture.audioEndFrame,
+          endFrame > fixture.audioEndFrame ||
+          (index > 0 && startFrame <= stages[index - 1]!.endFrame),
+      ) ||
+      stages.some(({ kind, expectedSourceText, expectedChinese }) =>
+        kind === "speech"
+          ? !expectedSourceText?.trim() ||
+            !expectedChinese?.length ||
+            expectedChinese.some((text) => !text.trim())
+          : expectedSourceText !== undefined || expectedChinese !== undefined,
+      ) ||
+      hasAmbiguousExpectedChinese(
+        stages.filter(({ kind }) => kind === "speech").map(({ expectedChinese = [] }) => expectedChinese),
       )
     ) {
-      throw new Error("IQA-003 fixture requires explicit three-stage boundaries");
+      throw new Error("IQA-003 fixture requires explicit, distinct three-stage semantics");
     }
+  }
+  const iqa001Fixtures = manifest.scenarios["IQA-001"].map(
+    (id) => manifest.fixtures.find((fixture) => fixture.id === id)!,
+  );
+  if (
+    iqa001Fixtures.length !== 1 ||
+    iqa001Fixtures.some(({ continuousContent, contentSegments, audioEndFrame }) => {
+      if (!continuousContent || !contentSegments || contentSegments.length < 2) return true;
+      return (
+        new Set(contentSegments.map(({ id }) => id)).size !== contentSegments.length ||
+        hasAmbiguousExpectedChinese(contentSegments.map(({ expectedChinese }) => expectedChinese)) ||
+        contentSegments.some(
+        ({ id, startFrame, endFrame, expectedSourceText, expectedChinese }, index) =>
+          !id.trim() ||
+          !expectedSourceText.trim() ||
+          expectedChinese.length === 0 ||
+          expectedChinese.some((text) => !text.trim()) ||
+          startFrame < 1 ||
+          endFrame < startFrame ||
+          endFrame > audioEndFrame ||
+          (index > 0 && startFrame <= contentSegments[index - 1]!.endFrame),
+        )
+      );
+    })
+  ) {
+    throw new Error("IQA-001 requires one continuous fixture with at least two content segments");
+  }
+  if (manifest.scenarios["IQA-003"].length !== 1) {
+    throw new Error("IQA-003 requires one continuous three-stage fixture");
   }
   return manifest;
 }

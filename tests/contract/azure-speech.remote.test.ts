@@ -19,26 +19,73 @@ describe.skipIf(!enabled)("Azure Speech remote contract", () => {
       throw new Error("explicit Speech endpoint, candidate locales, and fixture manifest are required");
     }
     const manifest = await loadAudioFixtureBundle(manifestPath, locales);
-    const observed = new Set<string>();
+    const observed: { sourceLanguage: string; sourceText: string }[] = [];
     const adapter = new AzureSpeechAdapter({
       endpoint,
       candidateLocales: locales,
       azureClientId: process.env.AZURE_CLIENT_ID,
     });
-    await adapter.start((segment) => observed.add(segment.sourceLanguage), () => undefined);
+    await adapter.start(
+      ({ sourceLanguage, sourceText }) => observed.push({ sourceLanguage, sourceText }),
+      () => undefined,
+    );
+    const fixtureResults: {
+      fixtureId: string;
+      declaredLocale: string;
+      actualLocales: string[];
+      sourceTextMatched: boolean;
+    }[] = [];
     try {
       for (const fixture of manifest.fixtures) {
-      const audio = await readFile(resolve(dirname(manifestPath), fixture.path));
-      for (let offset = 0; offset < audio.length; offset += 640) {
-        await adapter.write(audio.subarray(offset, offset + 640));
-        await new Promise((resolveWait) => setTimeout(resolveWait, 20));
-      }
+        const observedStart = observed.length;
+        const audio = await readFile(resolve(dirname(manifestPath), fixture.path));
+        for (let offset = 0; offset < audio.length; offset += 640) {
+          await adapter.write(audio.subarray(offset, offset + 640));
+          await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+        }
+        const normalizedExpected = fixture.expectedSourceText
+          .normalize("NFKC")
+          .toLocaleLowerCase()
+          .replace(/[^\p{L}\p{N}]+/gu, "");
+        const deadline = Date.now() + 15_000;
+        let recognized = observed.slice(observedStart);
+        while (
+          !recognized
+            .map(({ sourceText }) => sourceText)
+            .join("")
+            .normalize("NFKC")
+            .toLocaleLowerCase()
+            .replace(/[^\p{L}\p{N}]+/gu, "")
+            .includes(normalizedExpected) &&
+          Date.now() < deadline
+        ) {
+          await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+          recognized = observed.slice(observedStart);
+        }
+        const sourceTextMatched = recognized
+          .map(({ sourceText }) => sourceText)
+          .join("")
+          .normalize("NFKC")
+          .toLocaleLowerCase()
+          .replace(/[^\p{L}\p{N}]+/gu, "")
+          .includes(normalizedExpected);
+        const actualLocales = [...new Set(recognized.map(({ sourceLanguage }) => sourceLanguage))];
+        expect(sourceTextMatched, `source text for ${fixture.id}`).toBe(true);
+        expect(actualLocales, `locale for ${fixture.id}`).toEqual([fixture.locale]);
+        fixtureResults.push({
+          fixtureId: fixture.id,
+          declaredLocale: fixture.locale,
+          actualLocales,
+          sourceTextMatched,
+        });
       }
       await adapter.end();
     } finally {
       await adapter.close();
     }
-    expect([...observed].sort()).toEqual([...locales].sort());
+    expect(new Set(fixtureResults.map(({ declaredLocale }) => declaredLocale))).toEqual(
+      new Set(locales),
+    );
     const evidenceDirectory = process.env.AIDELIVERY_CONTRACT_EVIDENCE_DIRECTORY;
     if (!evidenceDirectory) throw new Error("contract evidence directory is required");
     await mkdir(evidenceDirectory, { recursive: true });
@@ -50,7 +97,7 @@ describe.skipIf(!enabled)("Azure Speech remote contract", () => {
         audioFormat: "pcm_s16le/16000/16/mono",
         sessionCount: 1,
         candidateLocales: locales,
-        observedLocales: [...observed].sort(),
+        fixtures: fixtureResults,
       })}\n`,
       "utf8",
     );

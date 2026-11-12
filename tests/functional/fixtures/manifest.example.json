@@ -15,11 +15,41 @@
       "expectedSourceText": "Approved fixture source meaning",
       "expectedChinese": ["已批准音频的预期中文含义"],
       "continuousContent": true,
+      "contentSegments": [
+        {
+          "id": "first-content",
+          "startFrame": 1,
+          "endFrame": 9,
+          "expectedSourceText": "Approved first source meaning",
+          "expectedChinese": ["已批准音频的第一段预期中文含义"]
+        },
+        {
+          "id": "second-content",
+          "startFrame": 21,
+          "endFrame": 30,
+          "expectedSourceText": "Approved second source meaning",
+          "expectedChinese": ["已批准音频的第二段预期中文含义"]
+        }
+      ],
       "silenceIntervals": [{ "startFrame": 10, "endFrame": 20 }],
       "stages": [
-        { "id": "before-silence", "kind": "speech", "startFrame": 1, "endFrame": 9 },
+        {
+          "id": "before-silence",
+          "kind": "speech",
+          "startFrame": 1,
+          "endFrame": 9,
+          "expectedSourceText": "Approved first source meaning",
+          "expectedChinese": ["已批准音频的第一段预期中文含义"]
+        },
         { "id": "silence", "kind": "silence", "startFrame": 10, "endFrame": 20 },
-        { "id": "after-silence", "kind": "speech", "startFrame": 21, "endFrame": 30 }
+        {
+          "id": "after-silence",
+          "kind": "speech",
+          "startFrame": 21,
+          "endFrame": 30,
+          "expectedSourceText": "Approved second source meaning",
+          "expectedChinese": ["已批准音频的第二段预期中文含义"]
+        }
       ],
       "audioEndFrame": 30
     }

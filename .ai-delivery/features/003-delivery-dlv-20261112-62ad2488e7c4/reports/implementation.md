@@ -564,3 +564,73 @@
 ### 实施结论
 
 完成：CONV-001 至 CONV-004 对应的既有任务实现缺口已定向修复。声明的 static analysis、build、developer tests、local contract、local browser functional、remote readiness、runtime syntax/failure boundary、依赖安全、immutable-base 路径和 credential scan 均取得当前 Session 的真实通过结果；真实 Azure 与部署后 IQA 结果如实延后。按 `coding-repair` 退出约束停止，不部署、不审批、不合并。
+
+## Coding Session coding-attempt-03-batch-08-operation-024
+
+### 实施范围
+
+本 Session 以 `coding-repair` 模式定向修复 Convergence 的 4 个既有测试证据缺口，沿用 T020-T023、T030-T032、T038、T041-T042，不修改任务文本或 checkbox。修复范围包括：把每个 Speech fixture 的声明 locale 与其实际识别 locale 逐项绑定；要求 IQA-001 使用同一持续输入中的至少两个可区分内容段并按语义关联字幕；要求 IQA-003 为静音前后定义互不混淆的源内容与预期中文并按语义归因；使自动语言识别和静音恢复的本地场景实际经过浏览器页面、fake microphone、AudioWorklet、WebSocket 和 `SubtitleView`。未修改生产应用行为、批准技术决策、runtime 声明、平台 workflow 或其他 Feature。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/contract/azure-speech.remote.test.ts` | 在同一 continuous LID session 中按 fixture 等待并核对源文本，将每个声明 locale 与实际 locale 列表逐项绑定并写入 contract evidence | T021、T041 |
+| `tests/functional/fixtures/manifest.schema.json`、`manifest.example.json` | 声明 IQA-001 连续内容段及 IQA-003 静音前后源内容和预期中文结构 | T020、T041 |
+| `tests/functional/support/audio-fixture-bundle.ts`、`audio-fixture-bundle.test.ts` | 联网前强制一个持续 IQA-001 fixture、至少两个有序且语义可区分的内容段，以及一个具有有序、非重叠、可区分语义的 IQA-003 三阶段 fixture | T020、T041 |
+| `tests/functional/support/iqa-evidence.ts`、`remote-candidate.ts` | 记录声明 locale、实际 locale、匹配结果和语义单元；字幕按预期中文关联内容段，而非按异步到达时刻归因 | T023、T031、T032 |
+| `tests/functional/remote/iqa-001.spec.ts`、`iqa-002.spec.ts`、`iqa-003.spec.ts`、`remote-suite.test.ts` | 分别断言同一会话内容段顺序、逐 fixture locale 一致性、静音前后新内容恢复及增强证据失败边界 | T023、T031、T032、T041 |
+| `tests/functional/support/browser-app.ts` | 创建仅测试侧使用的真实浏览器 App/fake microphone/AudioWorklet/Candidate WebSocket harness | T022、T030、T038 |
+| `tests/functional/automatic-language-detection.spec.ts`、`silence-recovery.spec.ts` | 由 Playwright 加载真实 React UI，分别验证无语言选择/无源语言协议字段的可见中文字幕，以及静音无字幕、后续字幕恢复 | T022、T030、T038 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| Azure Speech adapter contract / AC-001 | 既有 `AzureSpeechAdapter` | `tests/contract/azure-speech.remote.test.ts` | 入口现按 fixture 源文本等待识别并逐项断言实际 locale 等于声明 locale；真实 Azure 结果延后 |
+| IQA-001 / AC-003 | 既有 Candidate 浏览器链路 | fixture contract、`remote/iqa-001.spec.ts` | 强制同一持续 fixture 的两个以上可区分内容段；证据按语义单元、ordinal 与 `audio.end` 判定后续有序字幕 |
+| IQA-002 / AC-001 / AC-002 | 既有无源语言 UI/协议 | `automatic-language-detection.spec.ts`、`remote/iqa-002.spec.ts` | 本地真实浏览器链路通过；远程入口逐 fixture 核对声明 locale、实际 locale 与预期中文 |
+| IQA-003 / AC-004 | 既有持续会话与字幕 UI | fixture contract、`silence-recovery.spec.ts`、`remote/iqa-003.spec.ts` | 本地真实浏览器链路证明静音期间无字幕且后续恢复；远程证据按互异预期中文关联静音前后内容，不再按到达时刻归因 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 首次 focused Vitest | 尚未执行 setup 的 Coding workspace | 失败，退出码 127 | `vitest: not found`；随后仅执行已声明的 `npm ci` |
+| `npm ci` | Node.js 22、锁定依赖、无 Azure 配置 | 通过，退出码 0 | 安装 270 个 package，audit 为 0 个漏洞 |
+| focused fixture/evidence Vitest | 本地、无网络 | 通过，退出码 0 | 2 个 test file、6 项断言通过，覆盖连续内容、三阶段语义、locale/evidence 完整性正反例 |
+| 首次 focused Playwright | 尚未执行声明的 browser setup | 失败，退出码 1 | 缺少锁定 Playwright 对应 Chromium；随后执行 `npx playwright install chromium` |
+| `npx playwright install chromium` | 仓库外 Playwright cache | 通过，退出码 0 | 安装锁定 Chromium 与 FFmpeg，未产生仓库 diff |
+| focused Playwright 两项修复场景 | 本地 Candidate test DI、fake microphone、真实 App/AudioWorklet/UI | 通过，退出码 0 | 自动语言识别与静音恢复共 2 项通过 |
+| `npm run staticAnalysis` | 本地、无 Azure 配置 | 通过，退出码 0 | TypeScript strict 与 ESLint 均通过 |
+| `npm run build` | 本地 production build | 通过，退出码 0 | client 20 个 module、AudioWorklet asset 与 `dist/server/index.js` 构建成功 |
+| `npm test` | 本地 Vitest、无网络 | 通过，退出码 0 | 17 个 test file、54 项断言通过；9 项 Playwright/真实远程入口明确 skip |
+| `npm run test:contract` | 本地 contract suite、无 Azure 配置 | 通过，退出码 0 | 5 个 local file、12 项断言通过；2 个真实 Azure contract 明确 skip |
+| `npm run test:functional` | 本地 Playwright、已 build | 通过，退出码 0 | 4 项 local functional 通过，包含两项修复后的真实浏览器链路；3 项 remote IQA 明确 skip |
+| `npm run test:remote` | 本地 remote readiness、无远程输入 | 通过，退出码 0 | 4 项证据/输入边界断言通过；3 项 remote IQA 明确 skip且未联网 |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `git diff --check`、immutable-base path/任务/workflow/credential scan | 对比 `061908560ffc1ff9e5c89de6e26735d624dba86d` | 通过，退出码 0 | 变更仅位于批准 manifest；任务与 workflow 无 diff；未发现 whitespace error、credential value 或 private key |
+
+### Runtime 与下游门禁就绪制品
+
+- 既有 `runtime/deployment.json` 和 developer functional script 保持不变；其 setup 已准确包含本 Session 实际使用的 `npm ci` 与 Chromium 安装，分类 validation commands 已按顺序重放通过。
+- Speech contract evidence 现逐 fixture 保存 `declaredLocale`、`actualLocales` 与 `sourceTextMatched`；locale 互换、错配或源文本未识别会使测试失败。
+- IQA evidence 现保存 fixture 声明 locale、实际 locale、`localeMatched`、语义单元、字幕、ordinal、server sequence、实际输入帧与 `audio.end`。IQA-001 和 IQA-003 的判定不再依赖字幕异步到达时刻。
+- 本地自动语言识别和静音恢复场景现使用真实 Candidate 页面及用户链路；synthetic adapters 仍仅通过 server-side test DI 使用，不存在生产切换入口。
+
+### 延后平台证据
+
+- Coding 环境按 Constitution 未访问 Azure 或远程部署。真实 Azure Speech continuous LID、逐语言 fixture 识别、Foundry 翻译、managed identity/RBAC、完整候选 locale 集合及 IQA-001 至 IQA-003 结果仍由部署后精确 Candidate 上的平台阶段产生。
+- 最终 integrated Candidate SHA、image digest、deployment target、CI、Independent QA、UAT、发布审批、Review 与 Merge 证据尚未产生。
+- 本 Session 的本地 synthetic 浏览器结果、remote readiness、默认 skip 和 schema 正反例仅证明入口及判定证据就绪，不替代真实外部 integration 验收。
+
+### 限制、剩余风险与阻塞项
+
+- 真实 Speech 识别文本可能因服务分段或 fixture 质量无法与声明源文本对应；修复后的 contract 会等待受限时间后以非零状态报告，不会仅凭 locale 集合误判通过。
+- IQA-001 和 IQA-003 要求外部 fixture 提供可区分且互不包含的预期中文语义；不满足该 contract 会在联网前失败。真实识别或翻译若合并内容段、错配 locale、产生未知字幕或未恢复，也会由远程断言失败。
+- 未修改 production 应用、任务账本、批准上游制品或 runtime；未发现需要范围申请的新路径。
+
+### 实施结论
+
+完成：本 Session 已定向闭合 Convergence 指出的 4 个既有测试证据缺口。focused contract、真实浏览器用户链路、声明的 static analysis、build、developer tests、local contract、local functional、remote readiness、依赖安全、immutable-base 路径、任务/workflow 不变性及 secret 检查均取得真实通过结果；真实 Azure 与部署后 IQA 结果如实延后。按 `coding-repair` 退出约束停止，不部署、不审批、不合并。

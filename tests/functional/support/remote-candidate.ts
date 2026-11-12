@@ -51,12 +51,26 @@ function waveFile(pcm: Buffer): Buffer {
   return Buffer.concat([header, pcm]);
 }
 
-function stageAt(fixture: AudioFixture, frame: number): string {
-  return (
-    fixture.stages?.find(
-      ({ startFrame, endFrame }) => frame >= startFrame && frame <= endFrame,
-    )?.id ?? "content"
-  );
+function matchesExpected(subtitle: string, expected: readonly string[]): boolean {
+  return expected.some((value) => subtitle.includes(value) || value.includes(subtitle));
+}
+
+function semanticUnits(
+  scenarioId: "IQA-001" | "IQA-002" | "IQA-003",
+  fixture: AudioFixture,
+): { id: string; expectedChinese: string[] }[] {
+  if (scenarioId === "IQA-001") {
+    return fixture.contentSegments ?? [];
+  }
+  if (scenarioId === "IQA-003") {
+    return (fixture.stages ?? [])
+      .filter(
+        (stage): stage is typeof stage & { expectedChinese: string[] } =>
+          stage.kind === "speech" && Boolean(stage.expectedChinese),
+      )
+      .map(({ id, expectedChinese }) => ({ id, expectedChinese }));
+  }
+  return [{ id: fixture.id, expectedChinese: fixture.expectedChinese }];
 }
 
 export async function runRemoteScenario(options: {
@@ -74,23 +88,46 @@ export async function runRemoteScenario(options: {
     candidate: identity,
     target: options.baseUrl,
     fixtureSha256: fixtures.map(({ sha256 }) => sha256).join(","),
-    fixtures: fixtures.map(({ id, locale, expectedSourceText, expectedChinese }) => ({
+    fixtures: fixtures.map(
+      ({ id, locale, expectedSourceText, expectedChinese, contentSegments, stages }) => ({
       id,
       locale,
       expectedSourceText,
       expectedChinese,
+      contentSegments: contentSegments?.map(
+        ({ id: segmentId, expectedSourceText: segmentSource, expectedChinese: segmentChinese }) => ({
+          id: segmentId,
+          expectedSourceText: segmentSource,
+          expectedChinese: segmentChinese,
+        }),
+      ),
+      stages: stages?.map(
+        ({ id: stageId, kind, expectedSourceText: stageSource, expectedChinese: stageChinese }) => ({
+          id: stageId,
+          kind,
+          expectedSourceText: stageSource,
+          expectedChinese: stageChinese,
+        }),
+      ),
     })),
     audioEnds: [],
     stages: [],
     events: [],
   };
   for (const fixture of fixtures) {
-    await runFixtureInBrowser(options.baseUrl, options.manifestPath, fixture, evidence);
+    await runFixtureInBrowser(
+      options.scenarioId,
+      options.baseUrl,
+      options.manifestPath,
+      fixture,
+      evidence,
+    );
   }
   return evidence;
 }
 
 async function runFixtureInBrowser(
+  scenarioId: "IQA-001" | "IQA-002" | "IQA-003",
   baseUrl: string,
   manifestPath: string,
   fixture: AudioFixture,
@@ -136,18 +173,24 @@ async function runFixtureInBrowser(
       if (message.type !== "subtitle.final") return;
       const observedFrame = Math.min(fixture.audioEndFrame, Math.max(1, inputFrame));
       const subtitle = String(message.text);
+      const matchingUnits = semanticUnits(scenarioId, fixture).filter(({ expectedChinese }) =>
+        matchesExpected(subtitle, expectedChinese),
+      );
+      const semanticUnitId = matchingUnits.length === 1 ? matchingUnits[0]!.id : "unmatched";
+      const locale = String(message.sourceLanguage);
       evidence.events.push({
         fixtureId: fixture.id,
-        inputStage: stageAt(fixture, observedFrame),
+        inputStage: semanticUnitId,
+        semanticUnitId,
         observedFrame,
         beforeAudioEnd: !audioEnded,
         serverSequence: Number(message.sequence),
         ordinal: Number(message.ordinal),
-        locale: String(message.sourceLanguage),
+        locale,
+        declaredLocale: fixture.locale,
+        localeMatched: locale === fixture.locale,
         subtitle,
-        expectedChineseMatched: fixture.expectedChinese.some(
-          (expected) => subtitle.includes(expected) || expected.includes(subtitle),
-        ),
+        expectedChineseMatched: matchingUnits.length === 1,
       });
     });
   });
@@ -171,23 +214,24 @@ async function runFixtureInBrowser(
     for (const event of fixtureEvents) {
       await page.getByRole("listitem").filter({ hasText: event.subtitle }).waitFor();
     }
-    const stages = fixture.stages ?? [
-      {
-        id: "content",
-        startFrame: 1,
-        endFrame: fixture.audioEndFrame,
-      },
-    ];
+    const stages =
+      scenarioId === "IQA-001"
+        ? fixture.contentSegments!
+        : (fixture.stages ?? [
+            {
+              id: "content",
+              startFrame: 1,
+              endFrame: fixture.audioEndFrame,
+            },
+          ]);
     for (const stage of stages) {
       evidence.stages.push({
         fixtureId: fixture.id,
         id: stage.id,
         startFrame: stage.startFrame,
         endFrame: stage.endFrame,
-        subtitleCount: fixtureEvents.filter(
-          ({ observedFrame }) =>
-            observedFrame >= stage.startFrame && observedFrame <= stage.endFrame,
-        ).length,
+        subtitleCount: fixtureEvents.filter(({ semanticUnitId }) => semanticUnitId === stage.id)
+          .length,
       });
     }
   } finally {

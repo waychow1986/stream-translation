@@ -19,11 +19,41 @@ async function bundle(overrides: Record<string, unknown> = {}) {
     expectedSourceText: "hello",
     expectedChinese: ["你好"],
     continuousContent: true,
+    contentSegments: [
+      {
+        id: "first-content",
+        startFrame: 1,
+        endFrame: 1,
+        expectedSourceText: "hello",
+        expectedChinese: ["你好"],
+      },
+      {
+        id: "second-content",
+        startFrame: 3,
+        endFrame: 3,
+        expectedSourceText: "again",
+        expectedChinese: ["再见"],
+      },
+    ],
     silenceIntervals: [{ startFrame: 2, endFrame: 2 }],
     stages: [
-      { id: "before-silence", kind: "speech", startFrame: 1, endFrame: 1 },
+      {
+        id: "before-silence",
+        kind: "speech",
+        startFrame: 1,
+        endFrame: 1,
+        expectedSourceText: "hello",
+        expectedChinese: ["你好"],
+      },
       { id: "silence", kind: "silence", startFrame: 2, endFrame: 2 },
-      { id: "after-silence", kind: "speech", startFrame: 3, endFrame: 3 },
+      {
+        id: "after-silence",
+        kind: "speech",
+        startFrame: 3,
+        endFrame: 3,
+        expectedSourceText: "again",
+        expectedChinese: ["再见"],
+      },
     ],
     audioEndFrame: 3,
   };
@@ -52,6 +82,10 @@ describe("external audio fixture bundle", () => {
         {
           expectedSourceText: "hello",
           expectedChinese: ["你好"],
+          contentSegments: [
+            { id: "first-content", expectedSourceText: "hello", expectedChinese: ["你好"] },
+            { id: "second-content", expectedSourceText: "again", expectedChinese: ["再见"] },
+          ],
           stages: [
             { id: "before-silence", kind: "speech" },
             { id: "silence", kind: "silence" },
@@ -95,7 +129,39 @@ describe("external audio fixture bundle", () => {
     );
     await writeFile(invalidStages, JSON.stringify(stageGap));
     await expect(loadAudioFixtureBundle(invalidStages, ["en-US"])).rejects.toThrow(
-      "three-stage",
+      "three-stage semantics",
+    );
+
+    const missingContinuousContent = await bundle();
+    const continuousGap = JSON.parse(await readFile(missingContinuousContent, "utf8")) as {
+      fixtures: { contentSegments: unknown[] }[];
+    };
+    continuousGap.fixtures[0]!.contentSegments.pop();
+    await writeFile(missingContinuousContent, JSON.stringify(continuousGap));
+    await expect(loadAudioFixtureBundle(missingContinuousContent, ["en-US"])).rejects.toThrow(
+      "two content segments",
+    );
+
+    const ambiguousContinuousContent = await bundle();
+    const continuousSemanticGap = JSON.parse(
+      await readFile(ambiguousContinuousContent, "utf8"),
+    ) as {
+      fixtures: { contentSegments: { expectedChinese: string[] }[] }[];
+    };
+    continuousSemanticGap.fixtures[0]!.contentSegments[1]!.expectedChinese = ["你好"];
+    await writeFile(ambiguousContinuousContent, JSON.stringify(continuousSemanticGap));
+    await expect(loadAudioFixtureBundle(ambiguousContinuousContent, ["en-US"])).rejects.toThrow(
+      "two content segments",
+    );
+
+    const ambiguousRecovery = await bundle();
+    const recoveryGap = JSON.parse(await readFile(ambiguousRecovery, "utf8")) as {
+      fixtures: { stages: { expectedChinese?: string[] }[] }[];
+    };
+    recoveryGap.fixtures[0]!.stages[2]!.expectedChinese = ["你好"];
+    await writeFile(ambiguousRecovery, JSON.stringify(recoveryGap));
+    await expect(loadAudioFixtureBundle(ambiguousRecovery, ["en-US"])).rejects.toThrow(
+      "three-stage semantics",
     );
 
     const invalidPath = await bundle();
