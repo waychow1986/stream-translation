@@ -1,5 +1,5 @@
 import { loadAudioFixtureBundle } from "../support/audio-fixture-bundle";
-import { assertIqaEvidence } from "../support/iqa-evidence";
+import { assertIqaEvidence, persistIqaEvidence } from "../support/iqa-evidence";
 import { runRemoteScenario } from "../support/remote-candidate";
 
 async function validateInputs() {
@@ -37,21 +37,17 @@ if (process.env.VITEST) {
       manifest: bundle,
     });
     assertIqaEvidence(evidence);
-    for (const [index, event] of evidence.events.entries()) {
-      const fixture = fixtures.find(({ id }) => event.inputStage.startsWith(`${id}:`));
-      const frame = evidence.observations[index]?.inputFrame;
-      expect(
-        fixture?.silenceIntervals?.some(
-          ({ startFrame, endFrame }) =>
-            frame !== undefined && frame >= startFrame && frame <= endFrame,
-        ) ?? false,
-      ).toBe(false);
-    }
-    const finalSilenceFrame = Math.max(
-      ...fixtures.flatMap(({ silenceIntervals = [] }) =>
-        silenceIntervals.map(({ endFrame }) => endFrame),
-      ),
-    );
-    expect(evidence.observations.some(({ inputFrame }) => inputFrame > finalSilenceFrame)).toBe(true);
+    const silenceStages = evidence.stages.filter(({ id }) => id === "silence");
+    const recoveredStages = evidence.stages.filter(({ id }) => id === "after-silence");
+    expect(silenceStages).toHaveLength(fixtures.length);
+    expect(silenceStages.every(({ subtitleCount }) => subtitleCount === 0)).toBe(true);
+    expect(recoveredStages).toHaveLength(fixtures.length);
+    expect(recoveredStages.every(({ subtitleCount }) => subtitleCount > 0)).toBe(true);
+    expect(
+      evidence.events
+        .filter(({ inputStage }) => inputStage === "after-silence")
+        .every(({ expectedChineseMatched }) => expectedChineseMatched),
+    ).toBe(true);
+    await persistIqaEvidence(evidence);
   });
 }

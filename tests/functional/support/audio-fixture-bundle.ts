@@ -7,8 +7,16 @@ export type AudioFixture = {
   path: string;
   sha256: string;
   locale: string;
+  expectedSourceText: string;
+  expectedChinese: string[];
   continuousContent: boolean;
   silenceIntervals?: { startFrame: number; endFrame: number }[];
+  stages?: {
+    id: "before-silence" | "silence" | "after-silence";
+    kind: "speech" | "silence";
+    startFrame: number;
+    endFrame: number;
+  }[];
   audioEndFrame: number;
 };
 
@@ -48,11 +56,15 @@ function assertManifest(value: unknown): asserts value is AudioFixtureManifest {
       !fixture.path?.trim() ||
       !HASH.test(fixture.sha256) ||
       !LOCALE.test(fixture.locale) ||
+      !fixture.expectedSourceText?.trim() ||
+      !Array.isArray(fixture.expectedChinese) ||
+      fixture.expectedChinese.length === 0 ||
+      fixture.expectedChinese.some((text) => !text.trim()) ||
       typeof fixture.continuousContent !== "boolean" ||
       !Number.isSafeInteger(fixture.audioEndFrame) ||
       fixture.audioEndFrame < 1
     ) {
-      throw new Error("fixture entry is invalid");
+      throw new Error("fixture entry is invalid or expected translation is missing");
     }
   }
   for (const scenario of ["IQA-001", "IQA-002", "IQA-003"] as const) {
@@ -95,6 +107,26 @@ export async function loadAudioFixtureBundle(
   }
   for (const references of Object.values(manifest.scenarios)) {
     if (references.some((id) => !ids.has(id))) throw new Error("scenario references unknown fixture");
+  }
+  for (const id of manifest.scenarios["IQA-003"]) {
+    const fixture = manifest.fixtures.find((candidate) => candidate.id === id)!;
+    const stages = fixture.stages;
+    if (
+      stages?.length !== 3 ||
+      stages.map(({ id: stageId }) => stageId).join(",") !==
+        "before-silence,silence,after-silence" ||
+      stages.map(({ kind }) => kind).join(",") !== "speech,silence,speech" ||
+      stages.some(
+        ({ startFrame, endFrame }) =>
+          !Number.isSafeInteger(startFrame) ||
+          !Number.isSafeInteger(endFrame) ||
+          startFrame < 1 ||
+          endFrame < startFrame ||
+          endFrame > fixture.audioEndFrame,
+      )
+    ) {
+      throw new Error("IQA-003 fixture requires explicit three-stage boundaries");
+    }
   }
   return manifest;
 }

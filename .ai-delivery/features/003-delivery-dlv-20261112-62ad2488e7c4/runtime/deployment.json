@@ -5,7 +5,8 @@
   "webSocketPath": "/ws/v1/translate",
   "migrationCommand": [],
   "developerSetupCommands": [
-    "npm ci"
+    "npm ci",
+    "npx playwright install chromium"
   ],
   "developerValidationCommands": {
     "staticAnalysis": [

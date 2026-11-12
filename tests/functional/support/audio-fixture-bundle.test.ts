@@ -9,16 +9,23 @@ import { loadAudioFixtureBundle } from "./audio-fixture-bundle";
 
 async function bundle(overrides: Record<string, unknown> = {}) {
   const root = await mkdtemp(join(tmpdir(), "audio-bundle-"));
-  const audio = Buffer.alloc(1_280);
+  const audio = Buffer.alloc(1_920);
   await writeFile(join(root, "sample.pcm"), audio);
   const fixture = {
     id: "en",
     path: "sample.pcm",
     sha256: createHash("sha256").update(audio).digest("hex"),
     locale: "en-US",
+    expectedSourceText: "hello",
+    expectedChinese: ["你好"],
     continuousContent: true,
-    silenceIntervals: [{ startFrame: 0, endFrame: 1 }],
-    audioEndFrame: 2,
+    silenceIntervals: [{ startFrame: 2, endFrame: 2 }],
+    stages: [
+      { id: "before-silence", kind: "speech", startFrame: 1, endFrame: 1 },
+      { id: "silence", kind: "silence", startFrame: 2, endFrame: 2 },
+      { id: "after-silence", kind: "speech", startFrame: 3, endFrame: 3 },
+    ],
+    audioEndFrame: 3,
   };
   const manifest = {
     sourceApproval: "generated test audio",
@@ -38,9 +45,20 @@ async function bundle(overrides: Record<string, unknown> = {}) {
 }
 
 describe("external audio fixture bundle", () => {
-  it("validates format, hash, complete locale coverage, and all IQA references", async () => {
+  it("validates semantics, stages, format, hash, complete locale coverage, and all IQA references", async () => {
     await expect(loadAudioFixtureBundle(await bundle(), ["en-US"])).resolves.toMatchObject({
       sourceApproval: "generated test audio",
+      fixtures: [
+        {
+          expectedSourceText: "hello",
+          expectedChinese: ["你好"],
+          stages: [
+            { id: "before-silence", kind: "speech" },
+            { id: "silence", kind: "silence" },
+            { id: "after-silence", kind: "speech" },
+          ],
+        },
+      ],
     });
   });
 
@@ -57,6 +75,28 @@ describe("external audio fixture bundle", () => {
       },
     });
     await expect(loadAudioFixtureBundle(invalidFormat, ["en-US"])).rejects.toThrow("16 kHz");
+
+    const missingSemantics = await bundle();
+    const semanticGap = JSON.parse(await readFile(missingSemantics, "utf8")) as {
+      fixtures: { expectedChinese?: string[] }[];
+    };
+    delete semanticGap.fixtures[0]!.expectedChinese;
+    await writeFile(missingSemantics, JSON.stringify(semanticGap));
+    await expect(loadAudioFixtureBundle(missingSemantics, ["en-US"])).rejects.toThrow(
+      "expected translation",
+    );
+
+    const invalidStages = await bundle();
+    const stageGap = JSON.parse(await readFile(invalidStages, "utf8")) as {
+      fixtures: { stages: { id: string }[] }[];
+    };
+    stageGap.fixtures[0]!.stages = stageGap.fixtures[0]!.stages.filter(
+      ({ id }) => id !== "after-silence",
+    );
+    await writeFile(invalidStages, JSON.stringify(stageGap));
+    await expect(loadAudioFixtureBundle(invalidStages, ["en-US"])).rejects.toThrow(
+      "three-stage",
+    );
 
     const invalidPath = await bundle();
     const escaped = JSON.parse(await readFile(invalidPath, "utf8")) as {

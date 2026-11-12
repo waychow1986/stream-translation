@@ -12,6 +12,7 @@
     "build:server": "tsc --noEmit && vite build --ssr src/server/index.ts --outDir dist/server",
     "build": "npm run clean && npm run build:client && npm run build:server",
     "test:contract": "vitest run tests/contract --passWithNoTests",
+    "test:contract:remote": "vitest run tests/contract/azure-speech.remote.test.ts tests/contract/foundry-translation.remote.test.ts",
     "test:functional": "playwright test tests/functional/*.spec.ts tests/functional/remote/*.spec.ts --pass-with-no-tests",
     "test:remote": "vitest run tests/functional/remote/remote-suite.test.ts && playwright test tests/functional/remote/*.spec.ts"
   },
