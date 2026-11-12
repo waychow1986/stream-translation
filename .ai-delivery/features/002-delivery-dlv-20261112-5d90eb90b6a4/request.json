@@ -1,0 +1,15 @@
+{
+  "deliveryId": "DLV-20261112-5D90EB90B6A4",
+  "version": 1,
+  "title": "\u5B9E\u73B0\u6D41\u5F0F\u7FFB\u8BD1",
+  "requirement": "1.\u63D0\u4F9B\u5B9E\u65F6\u8BED\u97F3\u8F6C\u6587\u5B57\u7684\u7FFB\u8BD1\u529F\u80FD\uFF0C\u4E3B\u8981\u662F\u5C06\u5176\u5B83\u8BED\u8A00\u7684\u8BED\u97F3\u7FFB\u8BD1\u6210\u4E2D\u6587\u5B57\u5E55\n2.\u8981\u6C42\u5B9E\u73B0\u6D41\u5F0F\u7FFB\u8BD1\uFF0C\u7C7B\u4F3CAzure\u8BED\u97F3\u8F6C\u6587\u5B57\u7684\u5B9E\u65F6\u7FFB\u8BD1\u529F\u80FD\u6216\u8005teams\u7684\u5B9E\u65F6\u5B57\u5E55\u529F\u80FD\n3.\u4E3B\u8981\u662F\u5F00\u4F1A\u65F6\u5019\u4F7F\u7528\uFF0C\u56E0\u4E3A\u53D1\u8A00\u4EBA\u6709\u53EF\u80FD\u662F\u5916\u56FD\u4EBA\n4.\u8BED\u97F3\u9700\u8981\u652F\u6301\u81EA\u52A8\u68C0\u6D4B\uFF0C\u7136\u540E\u7FFB\u8BD1\u6210\u4E2D\u6587\u5B57\u5E55",
+  "requestedBy": "\u4E1A\u52A1\u4EA7\u54C1\u8D1F\u8D23\u4EBA",
+  "changeRequest": null,
+  "currentSpecification": null,
+  "agentModel": "gpt-5.6-sol",
+  "projectId": "PRJ-20261112-2462BC15A085",
+  "constitutionVersion": 1,
+  "constitutionHash": "08444f2fe05be98d27e791483e8afc5af5d75546b8c5fbff79bd155b0dd932f7",
+  "technicalBaselineVersion": 1,
+  "technicalBaselineHash": "42f322fb48f048c4578a2b36878ff911a2ed377b497cd2fa1fc81236ca9c972d"
+}
