@@ -1,0 +1,36 @@
+{
+  "sourceArtifacts": {
+    "reports/convergence.md": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "passed": false,
+  "blockers": [
+    {
+      "category": "test-gap",
+      "artifact": "design.md",
+      "path": "tests/contract/foundry-translation.remote.test.ts",
+      "description": "真实 Azure Speech 与 Foundry contract 自动化未实际闭合并接入下游执行入口。",
+      "route": "coding-repair"
+    },
+    {
+      "category": "test-gap",
+      "artifact": "spec.md",
+      "path": "tests/functional/remote/iqa-001.spec.ts",
+      "description": "IQA remote suite 的节奏、中文对应关系和三阶段断言不足以可靠判定 AC-001 至 AC-004。",
+      "route": "coding-repair"
+    },
+    {
+      "category": "test-gap",
+      "artifact": "spec.md",
+      "path": "tests/functional/streaming-subtitles.spec.ts",
+      "description": "functional 自动化绕过实际 Web app、AudioWorklet 与 SubtitleView，缺少浏览器用户链路证据。",
+      "route": "coding-repair"
+    },
+    {
+      "category": "partial",
+      "artifact": "tasks-implementation.md",
+      "path": ".ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/runtime/developer-functional-run.sh",
+      "description": "developer functional script 未保全逐场景真实证据而生成固定成功摘要。",
+      "route": "coding-repair"
+    }
+  ]
+}
