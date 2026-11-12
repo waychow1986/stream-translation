@@ -65,6 +65,12 @@ Intent 中已勾选且包含接受答案的 `BQ-###` 记录，是已完成人工
 不安全行为或明确治理冲突时，才能使用 route `upstream_exception`。偏好、替代设计、
 缺少下游细节或不同意已批准决策，绝不是上游例外。
 
+若存在上一轮同阶段门禁报告，必须检查修复后的权威制品是否真正消除了该根因。不得因
+制品新增了“尚未就绪”、转述原阻塞项或要求当前阶段无权提供的目标资源/人工决策，就再次
+输出相同的 `current_stage` finding。若当前阶段仍有权作出具体决定，应准确指出尚未完成的
+决定；若制品已证明必须修改、澄清或由人工重新决定已批准前置义务，必须按严格契约输出
+`upstream_exception`，不得形成重复修复循环。
+
 不得修改任何交付制品。只能创建任务提示明确指定的 Markdown 报告和 JSON 路径。
 存在 `.ai-delivery/context.json` 时，两者必须位于其 `activeFeatureDirectory`
 之下；绝不能在全局 `.ai-delivery/.state` 或 `.ai-delivery/reports` 目录写入重复
