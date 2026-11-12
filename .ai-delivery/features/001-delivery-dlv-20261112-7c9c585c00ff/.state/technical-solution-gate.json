@@ -1,0 +1,17 @@
+{
+  "stage": "technical-solution",
+  "passed": false,
+  "findings": [
+    {
+      "id": "TS-SELF-001",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "design.md",
+      "owner": "technical-solution",
+      "summary": "完整合格源语言集合的单会话自动检测可行性未闭合",
+      "recommendation": "使用目标 Azure Speech resource/SDK 与 Foundry deployment 的权威能力清单明确完整交集和单会话 continuous LID 限制，并证明所选架构可在不预选、不抽样且不违反已批准 technical baseline 的前提下覆盖该集合；若实际 contract 证明不可实现，再按严格上游例外契约处理。",
+      "route": "current_stage",
+      "reasonType": "incomplete"
+    }
+  ]
+}
