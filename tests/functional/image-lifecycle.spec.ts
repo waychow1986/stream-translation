@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 
-import { expect, test } from "@playwright/test";
-
-test("built server exposes 503 while SIGTERM drains, then cancels and exits", async () => {
+async function exerciseImageLifecycle(
+  expectStatus: (actual: () => Promise<number>, expected: number) => Promise<void>,
+) {
   const script = `
     import { startServer } from "./dist/server/index.js";
     const speech = { start: async () => {}, write: async () => {}, end: async () => {}, close: async () => {} };
@@ -29,22 +29,38 @@ test("built server exposes 503 while SIGTERM drains, then cancels and exits", as
 
   try {
     const port = await readPort(child);
-    await expect
-      .poll(async () => (await fetch(`http://127.0.0.1:${port}/healthz`)).status)
-      .toBe(200);
+    await expectStatus(
+      async () => (await fetch(`http://127.0.0.1:${port}/healthz`)).status,
+      200,
+    );
 
     const exited = once(child, "exit") as Promise<[number | null]>;
     child.kill("SIGTERM");
 
-    await expect
-      .poll(async () => (await fetch(`http://127.0.0.1:${port}/healthz`)).status)
-      .toBe(503);
+    await expectStatus(
+      async () => (await fetch(`http://127.0.0.1:${port}/healthz`)).status,
+      503,
+    );
     const [exitCode] = await exited;
-    expect(exitCode).toBe(0);
+    if (exitCode !== 0) throw new Error(`expected server exit code 0, received ${exitCode}`);
   } finally {
     if (child.exitCode === null) child.kill("SIGKILL");
   }
-});
+}
+
+if (process.env.VITEST) {
+  const { describe, it } = await import("vitest");
+  describe.skip("image lifecycle functional scenario", () => {
+    it("is executed by Playwright against the production build", () => undefined);
+  });
+} else {
+  const { expect, test } = await import("@playwright/test");
+  test("built server exposes 503 while SIGTERM drains, then cancels and exits", async () => {
+    await exerciseImageLifecycle(async (actual, expected) => {
+      await expect.poll(actual).toBe(expected);
+    });
+  });
+}
 
 async function readPort(child: ChildProcess): Promise<number> {
   const stdout = child.stdout;
