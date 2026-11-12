@@ -12,6 +12,7 @@ describe("remote IQA suite readiness", () => {
         candidate: { deliveryId: "", candidateSha: "" },
         target: "",
         fixtureSha256: "",
+        fixtures: [],
         audioEnds: [],
         stages: [],
         events: [],
@@ -27,6 +28,14 @@ describe("remote IQA suite readiness", () => {
         candidate: { deliveryId: "DLV-test", candidateSha: "a".repeat(40) },
         target: "https://candidate.example.test",
         fixtureSha256: "b".repeat(64),
+        fixtures: [
+          {
+            id: "en",
+            locale: "en-US",
+            expectedSourceText: "hello",
+            expectedChinese: ["你好"],
+          },
+        ],
         audioEnds: [
           { fixtureId: "en", frame: 5, sentAt: "2026-11-12T00:00:01.000Z" },
         ],
@@ -60,6 +69,14 @@ describe("remote IQA suite readiness", () => {
         candidate: { deliveryId: "DLV-test", candidateSha: "a".repeat(40) },
         target: "https://candidate.example.test",
         fixtureSha256: "b".repeat(64),
+        fixtures: [
+          {
+            id: "en",
+            locale: "en-US",
+            expectedSourceText: "hello",
+            expectedChinese: ["你好"],
+          },
+        ],
         audioEnds: [
           { fixtureId: "en", frame: 5, sentAt: "2026-11-12T00:00:01.000Z" },
         ],

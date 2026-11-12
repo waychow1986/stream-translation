@@ -4,6 +4,12 @@ export type IqaEvidence = {
   candidate: { deliveryId: string; candidateSha: string };
   target: string;
   fixtureSha256: string;
+  fixtures: {
+    id: string;
+    locale: string;
+    expectedSourceText: string;
+    expectedChinese: string[];
+  }[];
   audioEnds: { fixtureId: string; frame: number; sentAt: string }[];
   stages: {
     fixtureId: string;
@@ -32,6 +38,15 @@ export function assertIqaEvidence(value: IqaEvidence): void {
     !value.candidate.candidateSha ||
     !value.target ||
     !value.fixtureSha256 ||
+    value.fixtures.length === 0 ||
+    value.fixtures.some(
+      ({ id, locale, expectedSourceText, expectedChinese }) =>
+        !id ||
+        !locale ||
+        !expectedSourceText ||
+        expectedChinese.length === 0 ||
+        expectedChinese.some((text) => !text),
+    ) ||
     value.audioEnds.length === 0 ||
     value.audioEnds.some(
       ({ fixtureId, frame, sentAt }) =>

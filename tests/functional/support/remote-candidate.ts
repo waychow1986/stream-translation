@@ -74,6 +74,12 @@ export async function runRemoteScenario(options: {
     candidate: identity,
     target: options.baseUrl,
     fixtureSha256: fixtures.map(({ sha256 }) => sha256).join(","),
+    fixtures: fixtures.map(({ id, locale, expectedSourceText, expectedChinese }) => ({
+      id,
+      locale,
+      expectedSourceText,
+      expectedChinese,
+    })),
     audioEnds: [],
     stages: [],
     events: [],
@@ -107,18 +113,28 @@ async function runFixtureInBrowser(
     origin: assertRemoteCandidateUrl(baseUrl).origin,
   });
   const page = await context.newPage();
-  let startedAt = 0;
+  let inputFrame = 0;
   let audioEnded = false;
   page.on("websocket", (socket) => {
     if (!socket.url().includes("/ws/v1/translate")) return;
+    socket.on("framesent", ({ payload }) => {
+      if (typeof payload !== "string") return;
+      const message = JSON.parse(payload) as Record<string, unknown>;
+      if (message.type === "audio.chunk") inputFrame += 1;
+      if (message.type === "audio.end") {
+        audioEnded = true;
+        evidence.audioEnds.push({
+          fixtureId: fixture.id,
+          frame: inputFrame,
+          sentAt: new Date().toISOString(),
+        });
+      }
+    });
     socket.on("framereceived", ({ payload }) => {
       if (typeof payload !== "string") return;
       const message = JSON.parse(payload) as Record<string, unknown>;
       if (message.type !== "subtitle.final") return;
-      const observedFrame = Math.min(
-        fixture.audioEndFrame,
-        Math.max(1, Math.floor((Date.now() - startedAt) / 20) + 1),
-      );
+      const observedFrame = Math.min(fixture.audioEndFrame, Math.max(1, inputFrame));
       const subtitle = String(message.text);
       evidence.events.push({
         fixtureId: fixture.id,
@@ -137,18 +153,20 @@ async function runFixtureInBrowser(
   });
   try {
     await page.goto(baseUrl);
-    startedAt = Date.now();
     await page.getByRole("button", { name: "开始" }).click();
     await page.getByRole("status").filter({ hasText: "正在翻译" }).waitFor();
-    await page.waitForTimeout(fixture.audioEndFrame * 20);
-    audioEnded = true;
-    evidence.audioEnds.push({
-      fixtureId: fixture.id,
-      frame: fixture.audioEndFrame,
-      sentAt: new Date().toISOString(),
-    });
+    const audioDeadline = Date.now() + Math.max(10_000, fixture.audioEndFrame * 40);
+    while (inputFrame < fixture.audioEndFrame && Date.now() < audioDeadline) {
+      await page.waitForTimeout(20);
+    }
+    if (inputFrame < fixture.audioEndFrame) {
+      throw new Error("browser did not stream the declared audio.end boundary");
+    }
     await page.getByRole("button", { name: "停止" }).click();
     await page.getByRole("status").filter({ hasText: "等待开始" }).waitFor();
+    if (!evidence.audioEnds.some(({ fixtureId }) => fixtureId === fixture.id)) {
+      throw new Error("browser did not send the audio.end boundary");
+    }
     const fixtureEvents = evidence.events.filter(({ fixtureId }) => fixtureId === fixture.id);
     for (const event of fixtureEvents) {
       await page.getByRole("listitem").filter({ hasText: event.subtitle }).waitFor();

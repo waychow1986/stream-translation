@@ -44,6 +44,7 @@ for scenario in IQA-001 IQA-002 IQA-003; do
       and .candidate.deliveryId == $deliveryId
       and .candidate.candidateSha == $candidateSha
       and .target == $target
+      and (.fixtures | length > 0)
       and (.audioEnds | length > 0)
       and (.stages | length > 0)
       and (.events | length > 0)

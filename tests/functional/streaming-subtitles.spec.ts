@@ -1,8 +1,7 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { chromium, expect, test } from "@playwright/test";
 import { createServer } from "vite";
 
 import { createApp } from "../../src/server/app";
@@ -34,7 +33,8 @@ function waveFile(seconds: number): Buffer {
   return Buffer.concat([header, data]);
 }
 
-test("renders ordered Chinese subtitles through App, microphone, AudioWorklet, and SubtitleView", async () => {
+async function exerciseBrowserChain() {
+  const { chromium, expect } = await import("@playwright/test");
   const audioRoot = await mkdtemp(join(tmpdir(), "stream-translation-browser-"));
   const audioPath = join(audioRoot, "input.wav");
   await writeFile(audioPath, waveFile(1));
@@ -88,5 +88,19 @@ test("renders ordered Chinese subtitles through App, microphone, AudioWorklet, a
     await browser.close();
     await vite.close();
     await app.close();
+    await rm(audioRoot, { recursive: true, force: true });
   }
-});
+}
+
+if (process.env.VITEST) {
+  const { describe, it } = await import("vitest");
+  describe.skip("streaming subtitle browser scenario", () => {
+    it("is executed by Playwright", () => undefined);
+  });
+} else {
+  const { test } = await import("@playwright/test");
+  test(
+    "renders ordered Chinese subtitles through App, microphone, AudioWorklet, and SubtitleView",
+    exerciseBrowserChain,
+  );
+}
