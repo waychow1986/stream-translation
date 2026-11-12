@@ -1,0 +1,40 @@
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { AzureSpeechAdapter } from "../../src/server/adapters/azure-speech";
+import { loadAudioFixtureBundle } from "../functional/support/audio-fixture-bundle";
+
+const enabled = process.env.AIDELIVERY_REMOTE_SPEECH === "1";
+
+describe.skipIf(!enabled)("Azure Speech remote contract", () => {
+  it("uses managed identity, fixed PCM, continuous LID, and every candidate locale", async () => {
+    const manifestPath = process.env.AIDELIVERY_AUDIO_FIXTURE_MANIFEST;
+    const endpoint = process.env.AZURE_SPEECH_ENDPOINT;
+    const locales = process.env.AZURE_SPEECH_CANDIDATE_LOCALES?.split(",").map((item) =>
+      item.trim(),
+    );
+    if (!manifestPath || !endpoint || !locales?.length) {
+      throw new Error("explicit Speech endpoint, candidate locales, and fixture manifest are required");
+    }
+    const manifest = await loadAudioFixtureBundle(manifestPath, locales);
+    const observed = new Set<string>();
+
+    for (const fixture of manifest.fixtures) {
+      const adapter = new AzureSpeechAdapter({
+        endpoint,
+        candidateLocales: locales,
+        azureClientId: process.env.AZURE_CLIENT_ID,
+      });
+      await adapter.start((segment) => observed.add(segment.sourceLanguage), () => undefined);
+      const audio = await readFile(resolve(dirname(manifestPath), fixture.path));
+      for (let offset = 0; offset < audio.length; offset += 640) {
+        await adapter.write(audio.subarray(offset, offset + 640));
+      }
+      await adapter.end();
+      await adapter.close();
+    }
+    expect([...observed].sort()).toEqual([...locales].sort());
+  });
+});

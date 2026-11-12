@@ -1,0 +1,25 @@
+{
+  "sourceApproval": "仅示例结构；音频由 Independent QA 在外部 bundle 中提供",
+  "audioFormat": {
+    "encoding": "pcm_s16le",
+    "sampleRateHz": 16000,
+    "bitsPerSample": 16,
+    "channels": 1
+  },
+  "fixtures": [
+    {
+      "id": "approved-en-us",
+      "path": "audio/approved-en-us.pcm",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "locale": "en-US",
+      "continuousContent": true,
+      "silenceIntervals": [{ "startFrame": 10, "endFrame": 20 }],
+      "audioEndFrame": 30
+    }
+  ],
+  "scenarios": {
+    "IQA-001": ["approved-en-us"],
+    "IQA-002": ["approved-en-us"],
+    "IQA-003": ["approved-en-us"]
+  }
+}
