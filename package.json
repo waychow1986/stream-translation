@@ -9,10 +9,10 @@
     "lint": "eslint .",
     "staticAnalysis": "npm run typecheck && npm run lint",
     "build:client": "vite build --outDir dist/client",
-    "build:server": "tsc --noEmit && node --eval \"import { mkdirSync } from \\\"node:fs\\\"; mkdirSync(\\\"dist/server\\\", { recursive: true });\"",
+    "build:server": "tsc --noEmit && vite build --ssr src/server/index.ts --outDir dist/server",
     "build": "npm run clean && npm run build:client && npm run build:server",
     "test:contract": "vitest run tests/contract --passWithNoTests",
-    "test:functional": "playwright test --pass-with-no-tests"
+    "test:functional": "playwright test tests/functional --pass-with-no-tests"
   },
   "license": "ISC",
   "dependencies": {

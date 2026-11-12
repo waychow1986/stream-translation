@@ -64,6 +64,11 @@ function assertPositiveInteger(value: unknown, field: string): asserts value is 
   }
 }
 
+function assertEventBase(input: Record<string, unknown>, fields: readonly string[]): void {
+  assertExactKeys(input, ["type", "version", "sequence", ...fields]);
+  assertVersionAndSequence(input);
+}
+
 export function parseClientMessage(input: unknown): ClientMessage {
   if (!isRecord(input) || typeof input.type !== "string") {
     throw new ProtocolValidationError("invalid_message", "control message must be an object");
@@ -108,10 +113,7 @@ export function parseServerEvent(input: unknown): ServerEvent {
   }
 
   if (input.type === "subtitle.partial" || input.type === "subtitle.final") {
-    assertExactKeys(input, [
-      "type",
-      "version",
-      "sequence",
+    assertEventBase(input, [
       "sessionId",
       "segmentId",
       "ordinal",
@@ -119,7 +121,6 @@ export function parseServerEvent(input: unknown): ServerEvent {
       "sourceLanguage",
       "text",
     ]);
-    assertVersionAndSequence(input);
     assertUuid(input.sessionId, "sessionId");
     assertUuid(input.segmentId, "segmentId");
     assertPositiveInteger(input.ordinal, "ordinal");
@@ -131,6 +132,60 @@ export function parseServerEvent(input: unknown): ServerEvent {
       input.text.trim() === ""
     ) {
       throw new ProtocolValidationError("invalid_message", "invalid subtitle payload");
+    }
+    return input as ServerEvent;
+  }
+
+  if (input.type === "session.started") {
+    assertEventBase(input, ["sessionId", "audio"]);
+    assertUuid(input.sessionId, "sessionId");
+    assertAudioFormat(input.audio);
+    return input as ServerEvent;
+  }
+
+  if (input.type === "segment.error") {
+    assertExactKeys(
+      input,
+      ["type", "version", "sequence", "sessionId", "category", "recoverable"],
+      ["segmentId", "ordinal"],
+    );
+    assertVersionAndSequence(input);
+    assertUuid(input.sessionId, "sessionId");
+    if (input.segmentId !== undefined) assertUuid(input.segmentId, "segmentId");
+    if (input.ordinal !== undefined) assertPositiveInteger(input.ordinal, "ordinal");
+    if (
+      (input.category !== "speech" && input.category !== "translation") ||
+      input.recoverable !== true
+    ) {
+      throw new ProtocolValidationError("invalid_message", "invalid segment error payload");
+    }
+    return input as ServerEvent;
+  }
+
+  if (input.type === "session.end") {
+    assertEventBase(input, ["sessionId", "lastOrdinal"]);
+    assertUuid(input.sessionId, "sessionId");
+    if (!Number.isSafeInteger(input.lastOrdinal) || (input.lastOrdinal as number) < 0) {
+      throw new ProtocolValidationError(
+        "invalid_message",
+        "lastOrdinal must be a non-negative integer",
+      );
+    }
+    return input as ServerEvent;
+  }
+
+  if (input.type === "protocol.error") {
+    assertEventBase(input, ["code"]);
+    if (
+      ![
+        "invalid_message",
+        "invalid_sequence",
+        "invalid_state",
+        "expected_binary_frame",
+        "invalid_frame_size",
+      ].includes(input.code as string)
+    ) {
+      throw new ProtocolValidationError("invalid_message", "invalid protocol error code");
     }
     return input as ServerEvent;
   }

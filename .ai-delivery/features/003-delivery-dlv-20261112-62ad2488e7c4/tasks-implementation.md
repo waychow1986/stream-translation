@@ -25,18 +25,18 @@
 
 ## Phase 2：Foundational
 
-- [ ] T005 [P] 先编写 WebSocket v1 schema、严格 sequence、固定 PCM 参数、未知字段拒绝及字幕事件结构的定向单元测试，并以 Vitest 全部断言通过或在实现前明确失败作为 test-first 证据（`tests/unit/schemas.test.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T002）
-- [ ] T006 [P] 先编写 connected/streaming/draining/ended 转换、非法转换、`audio.end` drain 与关闭清理的定向单元测试，并以 Vitest 状态断言作为证据（`tests/unit/state-machine.test.ts`；来源：数据流、状态、并发与生命周期；依赖：T002）
-- [ ] T007 [P] 先编写启动配置 allowlist、必填值、candidate locale 去重校验及客户端不暴露 Azure 配置的定向单元测试，并以无 Azure 凭据的 Vitest 结果作为证据（`tests/unit/config.test.ts`；来源：配置、可观测性与运维、TD-004；依赖：T002）
-- [ ] T008 [P] 先编写 adapter interface、会话模型、ordinal/revision 不变量、health shutdown 状态和内容不进入结构化日志的定向测试，并以 TypeScript/Vitest 结果作为证据（`tests/unit/session-model.test.ts`、`tests/unit/health.test.ts`、`tests/unit/logging.test.ts`；来源：领域与数据模型、版本兼容性与 adapter 义务、配置与可观测性、Constitution 安全条款；依赖：T002）
-- [ ] T009 [P] 先编写 production build 静态文件提供 contract 测试，断言 `/` 与 client-side route 返回 `dist/client` 入口、静态 asset 可访问、`/healthz` 与 `/ws/v1/translate` 不被 fallback 覆盖，并保留实现前失败结果（`tests/contract/static-web.test.ts`；来源：Session gateway、数据流、部署拓扑；依赖：T002）
-- [ ] T010 [P] 先编写 synthetic Speech/Translation adapters 与生产 interface 一致性、确定性事件、错误注入及 Fastify server-side dependency injection contract 测试，断言客户端参数和生产配置均不能切换 adapter（`tests/contract/synthetic-adapters.test.ts`；来源：TD-009、版本兼容性与 adapter 义务、Verification Environment；依赖：T002）
+- [x] T005 [P] 先编写 WebSocket v1 schema、严格 sequence、固定 PCM 参数、未知字段拒绝及字幕事件结构的定向单元测试，并以 Vitest 全部断言通过或在实现前明确失败作为 test-first 证据（`tests/unit/schemas.test.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T002）
+- [x] T006 [P] 先编写 connected/streaming/draining/ended 转换、非法转换、`audio.end` drain 与关闭清理的定向单元测试，并以 Vitest 状态断言作为证据（`tests/unit/state-machine.test.ts`；来源：数据流、状态、并发与生命周期；依赖：T002）
+- [x] T007 [P] 先编写启动配置 allowlist、必填值、candidate locale 去重校验及客户端不暴露 Azure 配置的定向单元测试，并以无 Azure 凭据的 Vitest 结果作为证据（`tests/unit/config.test.ts`；来源：配置、可观测性与运维、TD-004；依赖：T002）
+- [x] T008 [P] 先编写 adapter interface、会话模型、ordinal/revision 不变量、health shutdown 状态和内容不进入结构化日志的定向测试，并以 TypeScript/Vitest 结果作为证据（`tests/unit/session-model.test.ts`、`tests/unit/health.test.ts`、`tests/unit/logging.test.ts`；来源：领域与数据模型、版本兼容性与 adapter 义务、配置与可观测性、Constitution 安全条款；依赖：T002）
+- [x] T009 [P] 先编写 production build 静态文件提供 contract 测试，断言 `/` 与 client-side route 返回 `dist/client` 入口、静态 asset 可访问、`/healthz` 与 `/ws/v1/translate` 不被 fallback 覆盖，并保留实现前失败结果（`tests/contract/static-web.test.ts`；来源：Session gateway、数据流、部署拓扑；依赖：T002）
+- [x] T010 [P] 先编写 synthetic Speech/Translation adapters 与生产 interface 一致性、确定性事件、错误注入及 Fastify server-side dependency injection contract 测试，断言客户端参数和生产配置均不能切换 adapter（`tests/contract/synthetic-adapters.test.ts`；来源：TD-009、版本兼容性与 adapter 义务、Verification Environment；依赖：T002）
 - [ ] T011 [P] 先编写进程生命周期 contract 与 image functional 场景，覆盖 SIGTERM 后 `/healthz` 返回 503、拒绝新 WebSocket、在途队列于 grace period 内 drain、超时后取消 provider 并关闭，保留实现前失败结果和确定性事件顺序（`tests/contract/lifecycle.test.ts`、`tests/functional/image-lifecycle.spec.ts`；来源：SLO、限制、扩缩容、重试与恢复，rollout、health、drain 与 rollback；依赖：T002）
-- [ ] T012 实现版本化 wire 类型与封闭 schema，精确校验控制事件、UUID、sequence、PCM metadata、640-byte 帧配对及稳定无内容错误码，使 T005 通过（`src/shared/protocol.ts`、`src/shared/schemas.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T005、T006）
-- [ ] T013 实现环境配置一次性校验及 adapter TypeScript interface，隔离 browser/server 配置并禁止生产 adapter 被客户端参数切换，使 T007、T008 通过（`src/server/config.ts`、`src/server/adapters/types.ts`；来源：配置、可观测性与运维、版本兼容性与 adapter 义务；依赖：T005、T007、T008）
-- [ ] T014 实现每连接状态机及会话内存模型，保证状态、客户端/服务端 sequence、ordinal、revision 和关闭清理不变量，使 T006、T008 通过（`src/server/session/state-machine.ts`；来源：领域与数据模型、数据流与生命周期；依赖：T006、T008）
-- [ ] T015 实现 Fastify 对 `dist/client` 的静态 asset 提供和非 API client-side route 入口 fallback，同时保持 health 与 WebSocket 路径边界，使 T009 在 production build 上通过（`src/server/static-web.ts`、`src/server/index.ts`；来源：Session gateway、数据流、部署拓扑；依赖：T009）
-- [ ] T016 实现可注入 adapter 的 Fastify app factory，并创建只由测试代码显式注入的 synthetic adapters、本地 server fixture 与只读挂载进 OCI image 后调用 image 内 `dist/server` app factory 的 harness；不得提供客户端、query 或生产环境变量切换入口，使 T010 通过（`src/server/app.ts`、`tests/functional/support/synthetic-adapters.ts`、`tests/functional/support/test-app.ts`、`tests/functional/support/image-candidate-server.mjs`；来源：TD-009、版本兼容性与 adapter 义务、Quickstart 2-4；依赖：T010、T012、T013、T014）
+- [x] T012 实现版本化 wire 类型与封闭 schema，精确校验控制事件、UUID、sequence、PCM metadata、640-byte 帧配对及稳定无内容错误码，使 T005 通过（`src/shared/protocol.ts`、`src/shared/schemas.ts`；来源：浏览器 WebSocket Contract、TD-003；依赖：T005、T006）
+- [x] T013 实现环境配置一次性校验及 adapter TypeScript interface，隔离 browser/server 配置并禁止生产 adapter 被客户端参数切换，使 T007、T008 通过（`src/server/config.ts`、`src/server/adapters/types.ts`；来源：配置、可观测性与运维、版本兼容性与 adapter 义务；依赖：T005、T007、T008）
+- [x] T014 实现每连接状态机及会话内存模型，保证状态、客户端/服务端 sequence、ordinal、revision 和关闭清理不变量，使 T006、T008 通过（`src/server/session/state-machine.ts`；来源：领域与数据模型、数据流与生命周期；依赖：T006、T008）
+- [x] T015 实现 Fastify 对 `dist/client` 的静态 asset 提供和非 API client-side route 入口 fallback，同时保持 health 与 WebSocket 路径边界，使 T009 在 production build 上通过（`src/server/static-web.ts`、`src/server/index.ts`；来源：Session gateway、数据流、部署拓扑；依赖：T009）
+- [x] T016 实现可注入 adapter 的 Fastify app factory，并创建只由测试代码显式注入的 synthetic adapters、本地 server fixture 与只读挂载进 OCI image 后调用 image 内 `dist/server` app factory 的 harness；不得提供客户端、query 或生产环境变量切换入口，使 T010 通过（`src/server/app.ts`、`tests/functional/support/synthetic-adapters.ts`、`tests/functional/support/test-app.ts`、`tests/functional/support/image-candidate-server.mjs`；来源：TD-009、版本兼容性与 adapter 义务、Quickstart 2-4；依赖：T010、T012、T013、T014）
 - [ ] T017 实现不访问 Azure 的 `/healthz`、JSON 无内容日志边界、SIGTERM 生命周期和 Fastify 启停入口：先置 503 并停止接受新连接，再在 grace period 内 drain，超时则取消 provider 和关闭连接，使 T008 与 T011 的 lifecycle contract 通过；image 场景留待 T042 重放（`src/server/health.ts`、`src/server/lifecycle.ts`、`src/server/index.ts`；来源：配置、可观测性与运维，SLO、限制、扩缩容、重试与恢复；依赖：T008、T011、T014、T016）
 
 ## Phase 3：US2 - 无需预设输入语言即可获得翻译

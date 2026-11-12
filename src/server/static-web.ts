@@ -12,5 +12,10 @@ export async function registerStaticWeb(app: FastifyInstance, clientRoot: string
     return reply.sendFile(`assets/${asset}`);
   });
   app.get("/", async (_request, reply) => reply.sendFile("index.html"));
-  app.get("/*", async (_request, reply) => reply.type("text/html").sendFile("index.html"));
+  app.get("/*", async (request, reply) => {
+    if (request.url === "/healthz" || request.url.startsWith("/ws/")) {
+      return reply.code(404).send();
+    }
+    return reply.type("text/html").sendFile("index.html");
+  });
 }

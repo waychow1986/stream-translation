@@ -60,4 +60,28 @@ describe("WebSocket v1 schemas", () => {
     expect(parseServerEvent(event)).toEqual(event);
     expect(() => parseServerEvent({ ...event, html: "<b>你好</b>" })).toThrow();
   });
+
+  it("allows only stable, content-free error events", () => {
+    const protocolError = {
+      type: "protocol.error",
+      version: 1,
+      sequence: 1,
+      code: "invalid_frame_size",
+    };
+    expect(parseServerEvent(protocolError)).toEqual(protocolError);
+    expect(() =>
+      parseServerEvent({ ...protocolError, code: "provider said customer text" }),
+    ).toThrow();
+
+    const segmentError = {
+      type: "segment.error",
+      version: 1,
+      sequence: 2,
+      sessionId: "4e4e4988-bb7f-4b79-9c2c-c03642acec82",
+      category: "translation",
+      recoverable: true,
+    };
+    expect(parseServerEvent(segmentError)).toEqual(segmentError);
+    expect(() => parseServerEvent({ ...segmentError, providerMessage: "secret" })).toThrow();
+  });
 });

@@ -23,7 +23,6 @@ afterAll(async () => {
 async function createApp() {
   const app = Fastify();
   app.get("/healthz", async () => ({ status: "ready" }));
-  app.get("/ws/v1/translate", async (_, reply) => reply.code(426).send());
   await registerStaticWeb(app, clientRoot);
   return app;
 }
@@ -40,7 +39,9 @@ describe("production static web contract", () => {
     const app = await createApp();
     expect((await app.inject("/assets/app.js")).body).toBe("export {};");
     expect((await app.inject("/healthz")).json()).toEqual({ status: "ready" });
-    expect((await app.inject("/ws/v1/translate")).statusCode).toBe(426);
+    const websocketPath = await app.inject("/ws/v1/translate");
+    expect(websocketPath.statusCode).toBe(404);
+    expect(websocketPath.headers["content-type"] ?? "").not.toContain("text/html");
     await app.close();
   });
 });
