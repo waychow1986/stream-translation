@@ -44,6 +44,16 @@ export type AudioFixtureManifest = {
 const LOCALE = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?-[A-Z]{2}$|^[a-z]{2,3}-[A-Z]{2}$/;
 const HASH = /^[a-f0-9]{64}$/;
 
+function hasAmbiguousExpectedChinese(groups: readonly (readonly string[])[]): boolean {
+  const values = groups.flatMap((group) => group.map((value) => value.trim()));
+  return values.some((value, index) =>
+    values.some(
+      (candidate, candidateIndex) =>
+        index !== candidateIndex && (value.includes(candidate) || candidate.includes(value)),
+    ),
+  );
+}
+
 function assertManifest(value: unknown): asserts value is AudioFixtureManifest {
   if (!value || typeof value !== "object") throw new Error("fixture manifest must be an object");
   const manifest = value as Partial<AudioFixtureManifest>;
@@ -141,9 +151,9 @@ export async function loadAudioFixtureBundle(
             expectedChinese.some((text) => !text.trim())
           : expectedSourceText !== undefined || expectedChinese !== undefined,
       ) ||
-      new Set(
-        stages.flatMap(({ expectedChinese = [] }) => expectedChinese.map((text) => text.trim())),
-      ).size !== stages.flatMap(({ expectedChinese = [] }) => expectedChinese).length
+      hasAmbiguousExpectedChinese(
+        stages.filter(({ kind }) => kind === "speech").map(({ expectedChinese = [] }) => expectedChinese),
+      )
     ) {
       throw new Error("IQA-003 fixture requires explicit, distinct three-stage semantics");
     }
@@ -155,7 +165,10 @@ export async function loadAudioFixtureBundle(
     iqa001Fixtures.length !== 1 ||
     iqa001Fixtures.some(({ continuousContent, contentSegments, audioEndFrame }) => {
       if (!continuousContent || !contentSegments || contentSegments.length < 2) return true;
-      return contentSegments.some(
+      return (
+        new Set(contentSegments.map(({ id }) => id)).size !== contentSegments.length ||
+        hasAmbiguousExpectedChinese(contentSegments.map(({ expectedChinese }) => expectedChinese)) ||
+        contentSegments.some(
         ({ id, startFrame, endFrame, expectedSourceText, expectedChinese }, index) =>
           !id.trim() ||
           !expectedSourceText.trim() ||
@@ -165,6 +178,7 @@ export async function loadAudioFixtureBundle(
           endFrame < startFrame ||
           endFrame > audioEndFrame ||
           (index > 0 && startFrame <= contentSegments[index - 1]!.endFrame),
+        )
       );
     })
   ) {

@@ -142,6 +142,18 @@ describe("external audio fixture bundle", () => {
       "two content segments",
     );
 
+    const ambiguousContinuousContent = await bundle();
+    const continuousSemanticGap = JSON.parse(
+      await readFile(ambiguousContinuousContent, "utf8"),
+    ) as {
+      fixtures: { contentSegments: { expectedChinese: string[] }[] }[];
+    };
+    continuousSemanticGap.fixtures[0]!.contentSegments[1]!.expectedChinese = ["你好"];
+    await writeFile(ambiguousContinuousContent, JSON.stringify(continuousSemanticGap));
+    await expect(loadAudioFixtureBundle(ambiguousContinuousContent, ["en-US"])).rejects.toThrow(
+      "two content segments",
+    );
+
     const ambiguousRecovery = await bundle();
     const recoveryGap = JSON.parse(await readFile(ambiguousRecovery, "utf8")) as {
       fixtures: { stages: { expectedChinese?: string[] }[] }[];
