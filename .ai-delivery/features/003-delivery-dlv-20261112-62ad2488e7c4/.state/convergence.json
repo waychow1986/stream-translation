@@ -1,35 +1,14 @@
 {
   "sourceArtifacts": {
-    "reports/convergence.md": "3b783dfcd82d0293ac7fd2cbbb5e560f007d8f188b82e63dcdcd194a5e7b92a0"
+    "reports/convergence.md": "pending"
   },
   "passed": false,
   "blockers": [
     {
-      "category": "test-gap",
-      "artifact": "design.md",
-      "path": "tests/contract/azure-speech.remote.test.ts",
-      "description": "\u9010\u8BED\u8A00\u81EA\u52A8\u8BC6\u522B\u8BC1\u636E\u672A\u5C06\u6BCF\u4E2A\u8F93\u5165 fixture \u7684\u58F0\u660E locale \u4E0E\u5B9E\u9645\u8BC6\u522B locale \u9010\u9879\u7ED1\u5B9A\u3002",
-      "route": "coding-repair"
-    },
-    {
-      "category": "test-gap",
-      "artifact": "spec.md",
-      "path": "tests/functional/remote/iqa-001.spec.ts",
-      "description": "IQA-001 \u5141\u8BB8\u5B57\u5E55\u6765\u81EA\u4E0D\u540C\u4F1A\u8BDD\uFF0C\u4E0D\u80FD\u8BC1\u660E\u540C\u4E00\u6301\u7EED\u53D1\u8A00\u7684\u540E\u7EED\u5185\u5BB9\u7EE7\u7EED\u6709\u5E8F\u4EA7\u751F\u5B57\u5E55\u3002",
-      "route": "coding-repair"
-    },
-    {
-      "category": "test-gap",
-      "artifact": "spec.md",
-      "path": "tests/functional/remote/iqa-003.spec.ts",
-      "description": "IQA-003 \u6309\u5F02\u6B65\u5B57\u5E55\u5230\u8FBE\u65F6\u523B\u5F52\u56E0\u8F93\u5165\u9636\u6BB5\uFF0C\u4E0D\u80FD\u8BC1\u660E\u9759\u97F3\u65E0\u865A\u6784\u8F93\u51FA\u53CA\u540E\u7EED\u771F\u5B9E\u6062\u590D\u3002",
-      "route": "coding-repair"
-    },
-    {
-      "category": "test-gap",
+      "category": "contradicts",
       "artifact": "tasks-implementation.md",
-      "path": "tests/functional/automatic-language-detection.spec.ts",
-      "description": "\u81EA\u52A8\u8BED\u8A00\u8BC6\u522B\u4E0E\u9759\u97F3\u6062\u590D\u7684 Coding functional \u573A\u666F\u672A\u6267\u884C\u5B9E\u9645\u6D4F\u89C8\u5668\u7528\u6237\u94FE\u8DEF\u3002",
+      "path": "tests/functional/fixtures/manifest.schema.json",
+      "description": "IQA-003 fixture JSON Schema \u5BF9 silence \u4E0E after-silence \u5185\u5BB9\u5B57\u6BB5\u7684\u8981\u6C42\u548C\u8FD0\u884C\u65F6\u6821\u9A8C\u5668\u3001\u793A\u4F8B manifest \u76F8\u53CD\u3002",
       "route": "coding-repair"
     }
   ]
