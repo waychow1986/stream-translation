@@ -1,0 +1,24 @@
+# 项目技术基线
+
+**版本：** 1
+**批准基线记录 SHA-256：** `42f322fb48f048c4578a2b36878ff911a2ed377b497cd2fa1fc81236ca9c972d`
+**选择模式：** `agent_proposed`
+
+## 技术要求
+
+客户明确要求：产品以浏览器访问的 Web app 交付，不制作桌面应用；语音识别使用 Azure AI Foundry 中可用的语音转文字（STT）能力，并启用实时连续听录和语言自动识别；识别文本由 Azure AI Foundry 中的大模型翻译为中文，大模型调用必须关闭 reasoning；可选择 gpt-sol-6.1。
+
+## 标准与约束
+
+客户未指定额外技术标准。项目 Constitution 强制要求：保持已批准范围并选择满足需求的最简单架构；凭据仅保留在服务端，服务支持时使用 managed identity；验证输入、执行 least privilege，不记录 secret 或客户内容；每项用户可见能力具备独立验收场景；Azure 外部集成必须由 Independent QA 针对已部署的精确 Candidate 使用真实测试服务执行 contract、integration、functional 和 end-to-end 验证，Mock、构建或页面 smoke test 不能替代验收证据。仓库治理还要求 Production candidate 包含 Dockerfile 和 active Feature 的 runtime/deployment.json，并显式声明可在 clean runner 幂等执行的 setup 与分类 validation commands。
+
+## 已批准的 Agent 建议
+
+- 推荐基线（Option A）：采用 TypeScript 全栈，Node.js 22 LTS 服务端、React 19 + Vite 浏览器端、Fastify 5 和原生 WebSocket。浏览器通过 Web Audio API 采集麦克风，将明确协商格式的单声道 PCM 音频帧经 WSS 发往服务端；服务端使用 Microsoft Cognitive Services Speech SDK 的 PushAudioInputStream 连接 Azure AI Speech 实时 STT，并启用 continuous language identification。只把 STT 的已确认片段发送给 Azure AI Foundry 模型部署翻译为简体中文，模型请求显式使用其 API 支持的关闭 reasoning 参数；服务端通过同一 WebSocket 推送带单调序号、源语言、片段状态和中文文本的字幕事件，丢弃过期响应但不因单片段失败终止会话。推荐理由：单一语言与单一容器降低 clean-runner、流式状态和部署复杂度，服务端统一持有 Azure 连接与凭据，并满足浏览器 Web app 边界。
+- Option A 的 Azure 与安全基线：STT 使用 Azure AI Speech 实时识别资源；翻译使用 Azure AI Foundry project 中经验证支持关闭 reasoning 的模型部署。gpt-sol-6.1 仅作为客户给出的优先候选，必须先从目标 tenant/region 的 Foundry model catalog、部署配额和实际 API contract 验证其存在、可部署且支持关闭 reasoning；未验证前不得虚构该模型能力或静默改用其他模型。生产身份优先采用 managed identity 和 Azure RBAC least privilege，本地开发仅从环境变量或开发 secret store 注入凭据；浏览器永不接收长期 Azure key。所有链路使用 HTTPS/WSS，不持久化音频、识别文本或译文，日志仅记录不含客户内容的 correlation id、状态、耗时和错误类别，并对音频帧大小、消息类型、会话状态及模型输出进行服务端验证。
+- Option A 的部署与运维候选：首选将静态前端与 Fastify/WebSocket 服务打包为单一 Linux OCI 容器，部署到支持 WebSocket 和 managed identity 的 Azure Container Apps；若现有项目环境已标准化 Azure App Service for Containers，可等价替换，优点是传统 Web app 运维更直接，代价是实时连接扩缩容和连接亲和行为仍需在目标环境验证。只配置服务实际需要的 Azure Speech 与 Foundry 出站访问，不新增数据库、消息队列、遥测后端、用户登录或会议平台集成。提供容器 HTTP health endpoint 仅用于平台存活检查；健康检查不能替代翻译验收。滚动发布必须让既有 WebSocket 会话自然结束或明确断开重连，回滚到上一不可变 image；不得承诺已批准制品未规定的可用率、延迟、并发量、保留期或扩缩容数字。
+- Option B：采用 Python 3.12、FastAPI、Uvicorn、Azure Speech SDK for Python，浏览器端仍使用 React 19 + Vite，并通过 WebSocket 传送音频与字幕。优点是 Python 的 Azure/AI 集成与测试生态直接，适合团队已有 Python 运维能力；缺点是前后端双 toolchain、同步 Speech SDK callback 与 asyncio/WebSocket 的生命周期桥接更复杂，clean-runner 安装和容器体积也高于 Option A。产品与安全 contract 不变；除非仓库团队对 Python 有既有标准，否则不推荐。
+- Option C：浏览器直接使用 Azure Speech SDK 连接 Speech 服务，服务端仅签发短期 Speech token 并调用 Foundry 模型。优点是音频不经过应用服务端，可能减少中转与带宽；缺点是新增 token broker、浏览器 SDK 兼容面和客户端云连接故障面，Azure 资源边界暴露更多，并使端到端诊断与统一会话控制更复杂。长期 key 仍不得进入浏览器。该方案只有在目标浏览器、continuous language identification、短期 token 和网络策略均通过真实环境 contract 验证时才应选择，因此不是推荐基线。
+- 关键兼容性约束与决策前置：Azure Speech continuous language identification 需要按实际 SDK/API contract 配置候选语言，其允许的语言集合、每会话候选数量、区域和语音格式限制必须以目标 Azure 资源的官方支持矩阵及真实 contract test 为准。Independent QA 所需的“全部合格源语言”是该 STT 自动检测集合与 Foundry 翻译能力集合的交集；若服务限制不能在无需用户预选语言的单一连续会话中覆盖已批准的完整集合，则任何框架都不能把该差异伪装成实现细节，必须在批准 baseline 前将其作为产品与所选服务不兼容的阻塞项处理。禁止用并行识别器猜测、固定单一语言或抽样语言测试冒充完整覆盖。
+- 接口与失败恢复建议：定义浏览器到服务端的版本化 WebSocket contract，至少区分 session.start、audio.chunk、audio.end、subtitle.partial、subtitle.final、segment.error 和 session.end，并携带 session id、segment id 与递增 sequence；具体二进制音频格式在握手中固定，服务端拒绝不匹配输入。每个 final STT segment 对应一个可关联的翻译请求，模型输出只接受中文译文，不让模型扩展、总结或回答内容；reasoning 关闭配置由 adapter contract test 断言。单片段检测、识别或翻译失败只产生该片段的非内容错误状态并继续接收后续音频；断线重连不宣称恢复未获批准的历史字幕。
+- 验证环境基线：Coding 在本地使用合成 adapter 验证 WebSocket schema、序号、流式字幕更新、中文输出约束、错误隔离与后续恢复，并运行现有项目声明的 staticAnalysis、build、developerTests；这些结果仅是辅助证据。平台 CI 在 clean runner 构建同一 Docker image，并执行不需要 Azure 凭据的测试。远程 integration/Independent QA 必须使用目标 Azure Speech 与 Foundry 测试部署、批准的 managed identity/RBAC、真实浏览器麦克风或可核对的流式音频输入，验证 SDK/API contract、reasoning 关闭、自动语言识别、中文翻译、输入结束前多次字幕更新和失败后恢复。IQA-002 必须保存验收时带日期的完整合格语言交集及逐语言结果，不得抽样；候选 SHA、image digest、部署 target 和 QA 证据必须指向同一不可变 Candidate。
