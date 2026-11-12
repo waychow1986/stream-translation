@@ -18,10 +18,10 @@
 
 ## Phase 1：Setup
 
-- [ ] T001 建立 Node.js 22 单 workspace 的锁定依赖、脚本和 clean-runner 安装入口，纳入 React 19、Vite、Fastify 5、Speech SDK、Azure Identity、Vitest、Playwright、ESLint 与 TypeScript，并以 `npm ci` 可重复安装作为完成证据（`package.json`、`package-lock.json`；来源：TD-001、TD-009、TD-010；依赖：无）
-- [ ] T002 配置 TypeScript strict、ESLint 和 Vite 的浏览器/服务端构建边界，使静态分析与 build 命令可在无 Azure 配置时执行并产生 `dist/client`、`dist/server`（`tsconfig.json`、`eslint.config.js`、`vite.config.ts`；来源：TD-001、TD-010、Verification Environment；依赖：T001）
-- [ ] T003 [P] 创建仅挂载 React 应用入口的 HTML shell，不加入语言选择、登录、历史或导出控件，并以 Vite build 解析入口成功作为证据（`index.html`；来源：TD-001、Component 边界；依赖：T002）
-- [ ] T004 [P] 配置仓库忽略规则，排除依赖、构建、coverage、Playwright 输出、编辑器输出及全部 `.env*`，不得写入 secret（`.gitignore`；来源：Component 边界与项目结构、TD-010；依赖：T002）
+- [x] T001 建立 Node.js 22 单 workspace 的锁定依赖、脚本和 clean-runner 安装入口，纳入 React 19、Vite、Fastify 5、Speech SDK、Azure Identity、Vitest、Playwright、ESLint 与 TypeScript，并以 `npm ci` 可重复安装作为完成证据（`package.json`、`package-lock.json`；来源：TD-001、TD-009、TD-010；依赖：无）
+- [x] T002 配置 TypeScript strict、ESLint 和 Vite 的浏览器/服务端构建边界，使静态分析与 build 命令可在无 Azure 配置时执行并产生 `dist/client`、`dist/server`（`tsconfig.json`、`eslint.config.js`、`vite.config.ts`；来源：TD-001、TD-010、Verification Environment；依赖：T001）
+- [x] T003 [P] 创建仅挂载 React 应用入口的 HTML shell，不加入语言选择、登录、历史或导出控件，并以 Vite build 解析入口成功作为证据（`index.html`；来源：TD-001、Component 边界；依赖：T002）
+- [x] T004 [P] 配置仓库忽略规则，排除依赖、构建、coverage、Playwright 输出、编辑器输出及全部 `.env*`，不得写入 secret（`.gitignore`；来源：Component 边界与项目结构、TD-010；依赖：T002）
 
 ## Phase 2：Foundational
 
