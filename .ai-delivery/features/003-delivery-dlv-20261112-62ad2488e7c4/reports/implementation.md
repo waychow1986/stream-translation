@@ -357,3 +357,70 @@
 ### 实施结论
 
 完成：本 Session 已完成且仅完成 T026 至 T037，共 12 项 US1 任务；静态分析、build、unit、local contract、local functional、remote-readiness、依赖安全及 diff 格式检查取得真实通过结果。真实 Azure、IQA 和下游平台证据均如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
+
+## Coding Session coding-attempt-01-batch-06-operation-019
+
+### 实施范围
+
+本 Session 按依赖顺序完成 US1 阶段剩余的 T038，共 1 项任务。实现浏览器用户手势触发的麦克风采集、AudioWorklet 16 kHz 单声道 signed little-endian PCM 重采样与 20 ms/640-byte 分帧、同源 WebSocket 开始/停止流程、音频资源释放，以及按 ordinal/revision 更新并由 React text node 渲染的当前会话中文字幕。未实施 Polish 阶段 T039 至 T042。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `src/client/audio/pcm-worklet.ts` | 实现流式线性重采样、显式 little-endian PCM 编码及 320 sample 分帧 | T038 |
+| `src/client/components/SubtitleView.tsx` | 以 React text node 和会话内有序列表渲染中文字幕 | T038 |
+| `src/client/App.tsx` | 实现用户手势开始/停止、麦克风与 AudioWorklet 生命周期、WebSocket 会话及字幕状态 | T038 |
+| `src/client/main.tsx`、`index.html` | 将 production HTML shell 接入 React 应用入口 | T038 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/tasks-implementation.md` | 仅将 T038 checkbox 更新为完成 | T038 |
+| `.ai-delivery/features/003-delivery-dlv-20261112-62ad2488e7c4/reports/implementation.md` | 在不可变历史前缀后追加当前 Session 证据 | Coding 治理 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-001 / Component 边界 | `src/client/audio/pcm-worklet.ts`、`src/client/App.tsx` | production client build、生成 worklet JavaScript asset 的语法检查 | 麦克风输入被重采样并严格形成 20 ms/640-byte PCM frame；静态检查与 build 通过 |
+| FR-004 / AC-003 / IQA-001 辅助行为 | `src/client/App.tsx`、`src/client/components/SubtitleView.tsx` | `tests/functional/streaming-subtitles.spec.ts` | 发言输入结束前的两个 ordinal 字幕按序产生，local functional 通过 |
+| FR-005 / AC-004 / IQA-003 辅助行为 | `src/client/App.tsx`、`src/client/components/SubtitleView.tsx` | `tests/functional/silence-recovery.spec.ts` | 静音阶段无虚构字幕且后续字幕恢复，local functional 通过 |
+| US-002 / AC-001 / AC-002 辅助行为 | `src/client/App.tsx`、`src/client/api/translation-socket.ts` | `tests/functional/automatic-language-detection.spec.ts` | 无源语言字段时识别 locale 与中文字幕链路通过 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `npm ci` | Node.js 22 Coding workspace，无 Azure 配置 | 通过，退出码 0 | 安装锁定的 270 个 package，audit 为 0 个漏洞 |
+| `npm run test:functional -- tests/functional/automatic-language-detection.spec.ts tests/functional/streaming-subtitles.spec.ts tests/functional/silence-recovery.spec.ts`（build 前基线） | 本地 Playwright、无 Azure 配置 | 整体失败，退出码 1 | 指定的 3 个场景通过；脚本同时发现既有 `image-lifecycle.spec.ts`，因 `npm ci` 后尚无 `dist/server/index.js` 失败；随后按 build→functional 正确顺序完整重放通过 |
+| `npm run staticAnalysis` | 本地 Node.js 22、无 Azure 配置 | 通过，退出码 0 | TypeScript strict 与 ESLint 通过 |
+| `npm run build` | 同上 | 通过，退出码 0 | client 转换 20 个 module，输出独立 `pcm-worklet-*.js`；server 转换 14 个 module，生成 `dist/server/index.js` |
+| `npm test` | 本地 Vitest、无网络 | 通过，退出码 0 | 17 个 test file、49 项断言通过；9 个 Playwright/远程入口明确 skip |
+| `npm run test:contract` | 本地 Fastify、synthetic adapters、无 Azure 配置 | 通过，退出码 0 | 5 个 file、11 项 local contract 断言通过；2 个真实 Azure remote contract 明确 skip |
+| `npm run test:functional` | production build、本地 Playwright、Candidate Fastify test DI | 通过，退出码 0 | 4 个 local functional 场景通过；IQA-001 至 IQA-003 三个 remote 场景明确 skip |
+| `npm run test:remote` | 本地 remote-readiness suite、无远程输入 | 通过，退出码 0 | 3 项联网前 contract 断言通过；3 个远程场景可发现并明确 skip，未访问远程服务 |
+| `npm audit --audit-level=moderate` | 锁定依赖 | 通过，退出码 0 | `found 0 vulnerabilities` |
+| `node --check dist/client/assets/pcm-worklet-*.js` | production client build | 通过，退出码 0 | 独立 AudioWorklet JavaScript asset 语法有效 |
+| `git diff --check 83254e42e3bf2aae6ebd01a30d2d17313c5e0410` | immutable Session base 对比 | 通过，退出码 0 | 未发现 whitespace error；仓库无独立 format script |
+| immutable base path 与 credential pattern scan | Session 最终范围 | 通过，退出码 0 | 变更路径均位于批准 manifest；未发现 credential value 或 private key pattern |
+
+### Runtime 与下游门禁就绪制品
+
+- production client build 已包含 React 应用与独立 AudioWorklet JavaScript asset；浏览器通过用户手势取得麦克风，并仅向同源 WebSocket 发送固定 PCM frame。
+- 开始流程等待 `session.started` 后才连接音频图；停止流程先释放麦克风、AudioWorklet、AudioContext 和 media tracks，再发送 `audio.end` 并等待剩余字幕及 `session.end`。
+- IQA-001 至 IQA-003 remote suite 的发现、联网前输入校验和默认 skip 已重放通过；真实远程输入未提供且未访问。
+- T039-T042 尚未执行，因此本 Session 未创建 `Dockerfile`、active Feature `runtime/deployment.json` 或 developer functional script；未修改 `.github/workflows/`。
+
+### 延后平台证据
+
+- 真实浏览器麦克风、批准外部音频 fixture、Azure Speech continuous LID、Foundry reasoning-off streaming、managed identity/RBAC 及完整候选语言交集仍由已部署精确 Candidate 上的 Independent QA 验证。
+- IQA-001 至 IQA-003 的真实 Candidate identity、target、fixture hash、输入边界、server sequence/ordinal、locale 和中文字幕证据尚未产生；本 Session 的 synthetic/local functional 结果不替代这些证据。
+- OCI image、最终 Candidate SHA/image digest、Container Apps target、CI、UAT、发布审批、Review 与 Merge 证据仍未产生。
+
+### 限制、剩余风险与阻塞项
+
+- 本地环境未提供真实麦克风、Azure endpoint、credential、managed identity 或部署 URL，因此未执行也未声称真实 Azure 或 Independent QA 通过。
+- T039 至 T042 的 OCI image、部署契约、remote suite 最终验证及 clean-runner/image 重放仍待后续 Coding batch。
+- 当前 UI 只提供已批准的开始、停止和当前会话中文字幕；未新增语言选择、历史、导出、登录或持久化。
+- 未发现阻塞下一批 Polish 实施的问题。
+
+### 实施结论
+
+完成：本 Session 已完成且仅完成 T038，使 US1 阶段闭合；静态分析、build、unit、local contract/integration、local functional、remote-test readiness、AudioWorklet 语法、依赖安全、格式与路径/secret 检查均取得真实通过结果。真实 Azure、Independent QA 和下游平台证据如实延后；整个 Delivery 尚未完成，按 bounded Coding 约束停止。
