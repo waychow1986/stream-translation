@@ -37,7 +37,7 @@
 - [ ] T014 实现每连接状态机及会话内存模型，保证状态、客户端/服务端 sequence、ordinal、revision 和关闭清理不变量，使 T006、T008 通过（`src/server/session/state-machine.ts`；来源：领域与数据模型、数据流与生命周期；依赖：T006、T008）
 - [ ] T015 实现 Fastify 对 `dist/client` 的静态 asset 提供和非 API client-side route 入口 fallback，同时保持 health 与 WebSocket 路径边界，使 T009 在 production build 上通过（`src/server/static-web.ts`、`src/server/index.ts`；来源：Session gateway、数据流、部署拓扑；依赖：T009）
 - [ ] T016 实现可注入 adapter 的 Fastify app factory，并创建只由测试代码显式注入的 synthetic adapters、本地 server fixture 与只读挂载进 OCI image 后调用 image 内 `dist/server` app factory 的 harness；不得提供客户端、query 或生产环境变量切换入口，使 T010 通过（`src/server/app.ts`、`tests/functional/support/synthetic-adapters.ts`、`tests/functional/support/test-app.ts`、`tests/functional/support/image-candidate-server.mjs`；来源：TD-009、版本兼容性与 adapter 义务、Quickstart 2-4；依赖：T010、T012、T013、T014）
-- [ ] T017 实现不访问 Azure 的 `/healthz`、JSON 无内容日志边界、SIGTERM 生命周期和 Fastify 启停入口：先置 503 并停止接受新连接，再在 grace period 内 drain，超时则取消 provider 和关闭连接，使 T008 与 T011 的 lifecycle contract 通过；image 场景留待 T039 重放（`src/server/health.ts`、`src/server/lifecycle.ts`、`src/server/index.ts`；来源：配置、可观测性与运维，SLO、限制、扩缩容、重试与恢复；依赖：T008、T011、T014、T016）
+- [ ] T017 实现不访问 Azure 的 `/healthz`、JSON 无内容日志边界、SIGTERM 生命周期和 Fastify 启停入口：先置 503 并停止接受新连接，再在 grace period 内 drain，超时则取消 provider 和关闭连接，使 T008 与 T011 的 lifecycle contract 通过；image 场景留待 T042 重放（`src/server/health.ts`、`src/server/lifecycle.ts`、`src/server/index.ts`；来源：配置、可观测性与运维，SLO、限制、扩缩容、重试与恢复；依赖：T008、T011、T014、T016）
 
 ## Phase 3：US2 - 无需预设输入语言即可获得翻译
 
