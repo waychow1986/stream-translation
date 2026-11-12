@@ -1,0 +1,61 @@
+{
+  "stage": "task-planning",
+  "passed": false,
+  "findings": [
+    {
+      "id": "TASK-COV-001",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "缺少生产环境静态 Web app 提供任务",
+      "recommendation": "在生产实现前增加静态文件提供的失败测试，并增加 Fastify 静态前端实现及 production build/image 可访问性的完成证据。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TASK-COV-002",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "Speech adapter 未承接 managed identity token 获取、刷新及验证",
+      "recommendation": "增加 token 获取与到期刷新测试，并扩充 Speech adapter 实现任务及完成证据；真实 RBAC 验证仍留给 Independent QA。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TASK-EXEC-003",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "本地 synthetic functional 与 OCI image 验证链不可执行",
+      "recommendation": "补充 synthetic adapters、接口合约测试及服务端 test DI 装配任务，使 image functional 场景实际经过 Candidate 应用。",
+      "route": "current_stage",
+      "reasonType": "incomplete"
+    },
+    {
+      "id": "TASK-COV-004",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "缺少真实 Azure 上 IQA-001 至 IQA-003 的端到端可执行入口",
+      "recommendation": "增加可由 Independent QA 对已部署 Candidate 启用的三项 IQA 自动化入口、准确路径和证据格式，Coding 仅验证入口默认不访问 Azure。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TASK-COV-005",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "graceful shutdown、drain 与 SIGTERM 证据不完整",
+      "recommendation": "补充 SIGTERM、503、拒绝新连接、队列 drain 和超时取消的 test-first、生命周期实现及 image 级验证任务。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    }
+  ]
+}
